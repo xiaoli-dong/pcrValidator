@@ -1,5 +1,5 @@
 # pcrValidator
-pcrValidator is a stand-alone and semi-automated pipleine. It was designed to assess the primer and probe oligo nucleotides of diagnostic qPCR or conventional PCR assays in ProvLab, Alberta. It searches user supplied primer and probes sequences against the target nucleotide sequences file to identify the target amplicons. The identified amplicons were then run through Mafft to generate multiple sequence alignment. Based on the multiple sequene alignments, pcrValidator generates a list of reports:
+pcrValidator is a stand-alone and semi-automated pipleine. It was designed to assess the primer and probe oligo nucleotides sequences of diagnostic qPCR or conventional PCR assays in ProvLab, Alberta. It firstly searches user supplied primer and probe sequences against the target nucleotide sequences to identify the target amplicons. Secondly, the identified amplicons were then run through Mafft program to generate multiple sequence alignment. Based on the multiple sequence alignments of the identified amplicons, pcrValidator generates a list of reports:
 
 ![pcr_validator_workflow](https://user-images.githubusercontent.com/52679027/194162582-c5b064b6-eaab-4f10-9e50-8194bce3534f.png)
 
