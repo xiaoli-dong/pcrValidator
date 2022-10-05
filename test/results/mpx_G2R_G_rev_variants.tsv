@@ -1,0 +1,6 @@
+rev_site	rev_errors	rev_site_count	total_amplicon_count	rev_in_amplicon_pct
+tacgctttcagattatgtgatagc	1	1567	1713	91.48
+tacgcttccagattatgtgatagc	0	141	1713	8.23
+tacgcttccagattatgcgatagc	1	1	1713	0.06
+tacgcttccaggttatgtgatagc	1	1	1713	0.06
+tacgctttyagattatgtgatagc	2	1	1713	0.06
