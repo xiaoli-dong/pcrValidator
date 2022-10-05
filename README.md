@@ -18,7 +18,7 @@ pip install -r requirements.product.txt
 ```
 
 # Quick start
- pcrValidator takes an csv file, in which each line describles a PCR assays and a fasta format sequences file, which contains the target sequences. The assay csv file can contain multiple lines and each line describe an assay and  uses the following format: assay_name, forward_primer_name, forward_primer_seq, reverse_primer_name, reverse_primer_seq, probe_name, probe_seq. 
+ pcrValidator takes a csv file, in which each line describles a PCR assays and a fasta format sequence file, which contains the target sequences. The assay csv file can contain multiple lines and each line describes an assay with the following format: assay_name, forward_primer_name, forward_primer_seq, reverse_primer_name, reverse_primer_seq, probe_name, probe_seq. 
 
 See below an example assay csv file
 
