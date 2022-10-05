@@ -33,7 +33,8 @@ Notes
 * degenerate nucleotides are permitted in the assay oligo sequences
 * the probe name and probe sequence can be omitted for a conventional PCR
 
-See belwo on how to run the program
+Here are some of the examples on how to use the program
+
 ```
 # check the script input options:
 python fetch_gbk.py -h
