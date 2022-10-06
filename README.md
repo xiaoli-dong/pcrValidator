@@ -68,6 +68,6 @@ The pcrValidator program generates five reports for each assay:
 * reverse primer variant report (*_rev_variants.tsv)
 * proble variant report (*_proble_variants.tsv)
 
-In addition, the outputs also includes the identified fasta format amplicon sequence file and its fasta format multiple sequence alignment file, which can be visualized by some other software such as [JalView](https://www.jalview.org/)
+In addition, the program outputs also include the identified fasta format amplicon sequence file and its fasta format multiple sequence alignment file, which can be visualized by some other software such as [JalView](https://www.jalview.org/)
 
-The example outputs can be see from [test directory](https://github.com/xiaoli-dong/pcrValidator/tree/main/test/results)
+The example outputs can be accessed from [test directory](https://github.com/xiaoli-dong/pcrValidator/tree/main/test/results)
