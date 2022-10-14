@@ -86,4 +86,4 @@ The pcrValidator program generates five reports for each assay:
 
 In addition, the program outputs also include the identified fasta format amplicon sequence file and its fasta format multiple sequence alignment file, which can be visualized by some other software such as [JalView](https://www.jalview.org/)
 
-The example outputs can be accessed from [test directory](https://github.com/xiaoli-dong/pcrValidator/tree/main/test/results)
+The example outputs can be accessed from [test directory](https://github.com/xiaoli-dong/pcrValidator/tree/main/test)
