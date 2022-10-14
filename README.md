@@ -47,18 +47,33 @@ Notes:
 * degenerate nucleotides are permitted in the assay oligo sequences
 * the probe name and probe sequence can be omitted for a conventional PCR
 
-Example commands to run the program
-
+Download reference DNA sequences from ncbi based on user provided query string
 ```
 # check the script input options:
 python fetch_gbk.py -h
-python pcrValidator.py -h
 
-# download the genbank format nucleotide sequences from NCBI
+# example command to download the genbank format nucleotide sequences from NCBI
 python fetch_gbk.py -q "txid138948[Organism]" -d nucleotide -e test@example.com -p mpx -r gb 
+```
 
-# run the pcrValidator program
-python pcrValidator.py -a assay.csv -g mpx.fasta -o results -p mpx -c 0 
+Run pcrValidator to generate primer, probe region mutation report
+
+```
+# check command line options
+python bin/pcrValidator.py -h
+
+#check command options when using blastn searching algorithm
+python bin/pcrValidator.py blastn -h
+
+# run the pcrValidator with blastn 
+python bin/pcrValidator.py blastn --assay assay.csv --template template.fasta --outdir results --prefix mpx
+
+#check command options when using tntblast searching algorithm
+python bin/pcrValidator.py tntblast -h
+
+# run the pcrValidator with tntblast 
+python bin/pcrValidator.py tntblast --assay assay.csv --outdir results --prefix mpx
+
 ```
 
 The pcrValidator program generates five reports for each assay:
