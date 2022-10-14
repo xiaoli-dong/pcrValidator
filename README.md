@@ -50,10 +50,10 @@ Notes:
 Download reference DNA sequences from ncbi based on user provided query string
 ```
 # check the script input options:
-python fetch_gbk.py -h
+python bin/fetch_gbk.py -h
 
 # example command to download the genbank format nucleotide sequences from NCBI
-python fetch_gbk.py -q "txid138948[Organism]" -d nucleotide -e test@example.com -p mpx -r gb 
+python bin/fetch_gbk.py -q "txid138948[Organism]" -d nucleotide -e test@example.com -p mpx -r gb 
 ```
 
 Run pcrValidator to generate primer, probe region mutation report
