@@ -27,7 +27,7 @@ pip install -r requirements.product.txt
 Now, you are ready to run the program
 
 # Quick start
- pcrValidator takes a csv file, in which each line describes a PCR assays, and a fasta format sequence file, which contains the target DNA sequences. The assay csv file can contain multiple lines and each line describes one assay in the format of:
+ pcrValidator allows users to choose blastn or tnbblast to search PCR template sequences or primer and probe sequences against the user defined fasta format reference sequences to identity target amplicons. When the tntblast is chosen, the program only requires user to provide a assay.csv file, in which each line describes a PCR assays and define the location of the fasta format reference file. When the blastn is chosen, the program requires both the assay.csv file and a fasta format PCR template file, which contains one or multiple PCR template sequences. The assay.csv file has multiple lines and each line has eight columns (for taqman assay) or six columns (for conventional PCR assay) to describe the assay. assay.csv file is in the format of:
  
  ```
  assay_name,forward_primer_name,forward_primer_seq,reverse_primer_name,reverse_primer_seq,probe_name,probe_seq 
