@@ -4,7 +4,7 @@ pcrValidator is a stand-alone and automated pipleine developed in Python3. It wa
 ![pcr_validator_workflow](https://user-images.githubusercontent.com/52679027/194174235-b1fe2c9e-2cd1-4ac3-a8d7-73db311fa13f.png)
 
 # Required Third-party software
-[NCBI Blast](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
+* [NCBI Blast](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
 * [ThermonucleotideBLAST](https://github.com/jgans/thermonucleotideBLAST): a software program for searching a target database of nucleic acid sequences using an assay-specific query.
 * [mafft](https://mafft.cbrc.jp/alignment/software/): a multiple sequence alignment program
 
