@@ -1,0 +1,4 @@
+probe_site	probe_errors	probe_site_count	total_amplicon_count	probe_in_amplicon_pct
+aagccgtaatctatgttgtctatcgtgtcc	0	847	851	99.53
+aagccgcaatctatgttgtctatcgtgtcc	1	2	851	0.24
+ccgccataatctgtgttgtttatcgtgtcc	5	1	851	0.12

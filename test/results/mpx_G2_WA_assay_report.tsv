@@ -1,4 +1,0 @@
-fwd_site	fwd_errors	probe_site	probe_errors	rev_site	rev_errors	total_errors	all_site_count	total_input_seq	total_amplicon_count	amplicon_in_input_pct	all_site_in_amplicon_pct
-cacaccgtctcttccacaga	0	aacccgtcgtaaccagcaatacattt	0	cgatgtggaaattaacctgtatc	0	0	1678	2148	1735	80.77	96.71
-cacaccgtctcttccacaga	0	aacc---cgtaaccagcaatacattt	3	cgatgtggaaattaacctgtatc	0	3	54	2148	1735	80.77	3.11
-cacaccgtctcttccacaga	0	aacctgtcgtaaccagcaatacattt	1	cgatgtggaaattaacctgtatc	0	1	1	2148	1735	80.77	0.06

@@ -1,0 +1,10 @@
+fwd_site	fwd_errors	probe_site	probe_errors	rev_site	rev_errors	total_errors	amplicon_count	total_input_seq	total_amplicon_count	amplicon_in_total_input_pct	amplicon_in_total_amplicon_pct
+ggaaagtgtaaagacaacgaatacag	1	aagccgtaatctatgttgtctatcgtgtcc	0	tacgctttcagattatgtgatagc	1	2	1465	1048	1648	157.25	88.9
+ggaaaatgtaaagacaacgaatacag	0	aagccgtaatctatgttgtctatcgtgtcc	0	tacgcttccagattatgtgatagc	0	0	90	1048	1648	157.25	5.46
+ggaaagtgtaaagacaacgaatacag	1	aagccgtaatctatgttgtctatcgtgtcc	0	tacgcttccagattatgtgatagc	0	1	81	1048	1648	157.25	4.92
+ggaaagtgtaaagacaacgaatacag	1	aagccgtaatctatgttgtctatcgtgtcc	0	tacgcttttagattatgtgatagc	2	3	4	1048	1648	157.25	0.24
+ggaaagtgtaaagacaacgaatacag	1	aagccgtaatctatgttgtctatcgtgtcc	0	tacgctttyagattatgtgatagc	2	3	2	1048	1648	157.25	0.12
+ggaaaatgtaaagacaacgaatacag	0	aagccgcaatctatgttgtctatcgtgtcc	1	tacgcttccagattatgtgatagc	0	1	1	1048	1648	157.25	0.06
+ggaaagtgtaaagacaacgaatacaa	2	ccgccataatctgtgttgtttatcgtgtcc	5	tacgcttccagattatgcgatagc	1	8	1	1048	1648	157.25	0.06
+ggaaagtgtaaagacaacgaatacag	1	aagccgcaatctatgttgtctatcgtgtcc	1	tacgcttccagattatgtgatagc	0	2	1	1048	1648	157.25	0.06
+ggaaagtgtaaagacaacgaatacag	1	aagccgtaatctatgttgtctatcgtgtcc	0	tacgcttccaggttatgtgatagc	1	2	1	1048	1648	157.25	0.06
