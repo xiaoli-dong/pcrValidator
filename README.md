@@ -1,9 +1,10 @@
 # pcrValidator
-pcrValidator is a stand-alone and automated pipleine developed in Python3. It was designed to assess the DNA oligonucleotide sequences of primers and probes used in diagnostic qPCR or conventional PCR assays in ProvLab, Alberta. It firstly searches user supplied primer and probe sequences against the target DNA sequences, which can be genome or gene sequences, to identify the target regions of the DNA sequences. Secondly, the identified target regions, amplicons, were then run through Mafft program to generate multiple sequence alignments. Based on the amplicon multiple sequence alignments, pcrValidator produces reports on assay performance and sequence variants in the primer and probe sites.
+pcrValidator is a stand-alone and automated pipleine developed in Python3. It was designed to assess the DNA oligonucleotide sequences of primers and probes used in diagnostic qPCR or conventional PCR assays in ProvLab, Alberta. It firstly searches user supplied primer and probe sequences against the target DNA sequences, which can be genome or gene sequences, to identify the target regions of the DNA sequences using NCBI blastn or [tntblast](https://public.lanl.gov/jgans/tntblast/tntblast_doc.html). Secondly, the identified target regions, amplicons, were then run through Mafft program to generate multiple sequence alignments. Based on the amplicon multiple sequence alignments, pcrValidator produces reports on assay performance and sequence variants in the primer and probe sites.
 
 ![pcr_validator_workflow](https://user-images.githubusercontent.com/52679027/194174235-b1fe2c9e-2cd1-4ac3-a8d7-73db311fa13f.png)
 
 # Required Third-party software
+[NCBI Blast](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
 * [ThermonucleotideBLAST](https://github.com/jgans/thermonucleotideBLAST): a software program for searching a target database of nucleic acid sequences using an assay-specific query.
 * [mafft](https://mafft.cbrc.jp/alignment/software/): a multiple sequence alignment program
 
