@@ -444,6 +444,8 @@ def read_assay_file(path_to_file):
 
     with open(path_to_file, "r", encoding="utf-8") as input_file:
         for line in input_file:
+            if line.startswith("#"):
+                continue
             line = line.rstrip().split(",")
             # Check if line has the accepted number of comma-separated values
             if len(line) not in [6, 8]:
