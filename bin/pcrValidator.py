@@ -155,13 +155,28 @@ def get_parser():
         help="blastn search expectation value (E) threshold for saving hits",
     )
     blastn_optional_group.add_argument(
+        "--qcov",
+        type=float,
+        default=0.9,
+        help="blastn search template query coverage, min > 0, max = 1",
+    )
+    blastn_optional_group.add_argument(
         "--max_target_seqs",
         "-m",
         type=int,
         default=1000000,
         help="blastn maximum number of aligned sequences to keep for each search",
     )
+    # Switch
+    blastn_optional_group.add_argument(
+        "--subject_besthit",
+        default=False,
+        action="store_true",
+        help="Turn on best hit per subject sequence for blastn search",
+    )
+
     blastn_parser.set_defaults(func=run_blastn_analysis)
+
     return parser
 
 
@@ -275,8 +290,9 @@ def run_blastn_analysis(args):
             args.max_target_seqs,
             args.word_size,
             args.evalue,
+            args.subject_besthit,
         )
-        parse_blastn_output(path_to_blastn_xml_output, path_to_amplicon)
+        parse_blastn_output(path_to_blastn_xml_output, path_to_amplicon, args.qcov)
 
         run_msa(path_to_assay_seq, path_to_amplicon, path_to_mafft_output)
         (msa_results,) = parse_msa_output(
@@ -588,6 +604,7 @@ def run_blastn(
     max_target_seqs,
     word_size,
     evalue,
+    subject_besthit,
 ):
 
     """make blastn search database"""
@@ -599,9 +616,12 @@ def run_blastn(
         outdir, assay_name, prefix + "_" + assay_name + "_blastn.xml"
     )
     # path_to_blastdb = f"tmp/{genome_name}"
-    terminal_command = f"blastn -query {path_to_query} -db {path_to_blastdb} -word_size {word_size} -out {path_to_blastn_xml_output}  -outfmt 5  -max_target_seqs {max_target_seqs}  -dust no -task blastn -evalue {evalue}"
-
+    if subject_besthit:
+        terminal_command = f"blastn -query {path_to_query} -db {path_to_blastdb} -word_size {word_size} -out {path_to_blastn_xml_output}  -outfmt 5  -max_target_seqs {max_target_seqs}  -dust no -task blastn -evalue {evalue} -subject_besthit"
+    else:
+        terminal_command = f"blastn -query {path_to_query} -db {path_to_blastdb} -word_size {word_size} -out {path_to_blastn_xml_output}  -outfmt 5  -max_target_seqs {max_target_seqs}  -dust no -task blastn -evalue {evalue}"
     print(terminal_command)
+
     completed_process = subprocess.run(
         terminal_command,
         stdout=subprocess.DEVNULL,
@@ -622,7 +642,7 @@ def run_blastn(
 
 
 # def parse_blastn_output(assay_details, path_to_blastn_xml, outdir, prefix):
-def parse_blastn_output(path_to_blastn_xml, path_to_amplicon):
+def parse_blastn_output(path_to_blastn_xml, path_to_amplicon, qcov):
 
     # https://uoftcoders.github.io/studyGroup/lessons/python/biopython/lesson/
     # path_to_amplicon = os.path.join(
@@ -632,8 +652,6 @@ def parse_blastn_output(path_to_blastn_xml, path_to_amplicon):
 
     result_handle = open(path_to_blastn_xml, "r")
     blast_records = NCBIXML.parse(result_handle)
-    E_VALUE_THRESH = 10
-    Q_COV_THRESH = 0.90
 
     # get rid of the duplicate ids when there are multiple input templates
     seen = []
@@ -644,8 +662,7 @@ def parse_blastn_output(path_to_blastn_xml, path_to_amplicon):
         for alignment in blast_record.alignments:
 
             for hsp in alignment.hsps:
-                align_len = hsp.align_length
-                if hsp.expect < E_VALUE_THRESH and (align_len / qlen > Q_COV_THRESH):
+                if hsp.align_length / qlen >= qcov:
                     # print("****Alignment****")
                     hit_def = alignment.hit_def
                     target_id = hit_def.split(" ", 1)[0]
