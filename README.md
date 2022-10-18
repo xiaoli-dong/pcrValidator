@@ -27,6 +27,18 @@ pip install -r requirements.product.txt
 
 Now, you are ready to run the program
 
+# Prepare the reference database for searching
+
+If you do not have reference set, you can use our provided script to download your interested references from NCBI to use as the searching databaes. To use the script, user needs to provide a query string. The query string can be built by using ncbi's [Nucleotide Advanced Search Builder](https://www.ncbi.nlm.nih.gov/nuccore/advanced/)
+
+```
+# check the script input options:
+python bin/fetch_gbk.py -h
+
+# example command to download the genbank format nucleotide sequences from NCBI
+python bin/fetch_gbk.py -q "txid138948[Organism]" -d nucleotide -e test@example.com -p mpx -r gb 
+```
+
 # Quick start
  pcrValidator allows users to choose blastn or tnbblast to search PCR template sequences or primer and probe sequences against the user defined fasta format reference sequences to identity target amplicons. When the tntblast is chosen, the program only requires user to provide a assay.csv file, in which each line describes a PCR assays and define the location of the fasta format reference file. When the blastn is chosen, the program requires both the assay.csv file and a fasta format PCR template file, which contains one or multiple PCR template sequences. The assay.csv file has multiple lines and each line has eight columns (for taqman assay) or six columns (for conventional PCR assay) to describe the assay. assay.csv file is in the format of:
  
@@ -47,14 +59,6 @@ Notes:
 * degenerate nucleotides are permitted in the assay oligo sequences
 * the probe name and probe sequence can be omitted for a conventional PCR
 
-Download reference DNA sequences from ncbi based on user provided query string
-```
-# check the script input options:
-python bin/fetch_gbk.py -h
-
-# example command to download the genbank format nucleotide sequences from NCBI
-python bin/fetch_gbk.py -q "txid138948[Organism]" -d nucleotide -e test@example.com -p mpx -r gb 
-```
 
 Run pcrValidator to generate primer, probe region mutation report
 
