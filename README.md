@@ -1,7 +1,8 @@
 # pcrValidator
 pcrValidator is a stand-alone and automated pipleine developed in Python3. It was designed to assess the DNA oligonucleotide sequences of primers and probes used in diagnostic qPCR or conventional PCR assays in ProvLab, Alberta. It firstly searches user supplied primer and probe sequences against the target DNA sequences, which can be genome or gene sequences, to identify the target regions of the DNA sequences using [NCBI blastn](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or [tntblast](https://public.lanl.gov/jgans/tntblast/tntblast_doc.html). Secondly, the identified target regions, amplicons, were then run through [Mafft program](https://mafft.cbrc.jp/alignment/software/) to generate multiple sequence alignments. Based on the amplicon multiple sequence alignments, pcrValidator produces reports on assay performance and sequence variants in the primer and probe sites.
 
-![pcrValidator_workflow](https://user-images.githubusercontent.com/52679027/195948105-6a33905b-d329-4fd2-ab01-96d460a7ab43.png)
+
+![pcrValidator_workflow](https://user-images.githubusercontent.com/52679027/196495086-e3bc1667-2646-4d19-88de-12d20580a372.png)
 
 # Required third-party software
 * [NCBI Blast](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download): a suite of programs provided by NCBI for aligning query sequences against those present in a selected target database.
