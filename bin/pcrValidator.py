@@ -17,7 +17,6 @@ from Bio.Seq import Seq
 from Bio import AlignIO
 from Bio.Blast import NCBIXML
 
-
 __version__ = "0.1.0"
 __author__ = "Xiaoli Dong"
 
@@ -89,7 +88,7 @@ def get_parser():
     tntblast_optional_group.add_argument(
         "-t",
         type=float,
-        default=0.9,
+        default=0.90,
         help="primer strand concentration (in uM)",
     )
     tntblast_optional_group.add_argument(
@@ -294,8 +293,14 @@ def run_blastn_analysis(args):
         )
         parse_blastn_output(path_to_blastn_xml_output, path_to_amplicon, args.qcov)
 
+        if os.stat(path_to_amplicon).st_size == 0:
+            print(
+                f"there is no identified target amplicons for {assay_name} using blastn and proceed to the next assay ... "
+            )
+            continue
+
         run_msa(path_to_assay_seq, path_to_amplicon, path_to_mafft_output)
-        (msa_results,) = parse_msa_output(
+        (msa_results, my_tech_dict) = parse_msa_output(
             assay_details,
             ref_seq_file_path,
             path_to_amplicon,
@@ -304,7 +309,11 @@ def run_blastn_analysis(args):
         )
 
         write_assay_report(
-            assay_details, msa_results, args.minAbundant, path_to_assay_report
+            assay_details,
+            msa_results,
+            args.minAbundant,
+            path_to_assay_report,
+            my_tech_dict,
         )
         write_variants_report(
             assay_details,
@@ -313,6 +322,7 @@ def run_blastn_analysis(args):
             path_to_fwd_variant_report,
             path_to_rev_variant_report,
             path_to_probe_variant_report,
+            my_tech_dict,
         )
 
 
@@ -380,10 +390,15 @@ def run_tntblast_analysis(args):
             args.T,
             path_to_amplicon,
         )
+        if os.stat(path_to_amplicon).st_size == 0:
+            print(
+                f"there is no identified target amplicons for {assay_name} and proceed to the next assay ... "
+            )
+            continue
 
         run_msa(path_to_assay_seq, path_to_amplicon, path_to_mafft_output)
 
-        (msa_results,) = parse_msa_output(
+        (msa_results, my_tech_dict) = parse_msa_output(
             assay_details,
             ref_seq_file_path,
             path_to_amplicon,
@@ -392,7 +407,11 @@ def run_tntblast_analysis(args):
         )
 
         write_assay_report(
-            assay_details, msa_results, args.minAbundant, path_to_assay_report
+            assay_details,
+            msa_results,
+            args.minAbundant,
+            path_to_assay_report,
+            my_tech_dict,
         )
         write_variants_report(
             assay_details,
@@ -401,6 +420,7 @@ def run_tntblast_analysis(args):
             path_to_fwd_variant_report,
             path_to_rev_variant_report,
             path_to_probe_variant_report,
+            my_tech_dict,
         )
 
 
@@ -524,6 +544,7 @@ def run_TNTBLAST(
     path_to_amplicon,
 ):
     """Run TNTBLAST with provided assay details."""
+
     # Create TNTBLAST assay file from assay details (TSV file of assay name and oligo seqs)
     assay_name = assay_details[0]
     fwd_primer_seq = assay_details[3]
@@ -540,10 +561,11 @@ def run_TNTBLAST(
     with open(path_to_tntblast_assay, "w", encoding="utf-8") as output_file:
         output_file.write(assay + "\n")
     # Create terminal command for TNTBLAST and run
-
+    primer_molarity = primer_molarity / 1000000
+    probe_molarity = probe_molarity / 1000000
     terminal_command = (
         f"tntblast -i {path_to_tntblast_assay} -d {path_to_genomes} -o {path_to_amplicon}"
-        f" -e {melting_temp_primer} -E {melting_temp_probe} -t {primer_molarity / 1000000} -T {probe_molarity / 1000000}"
+        f" -e {melting_temp_primer} -E {melting_temp_probe} -t {primer_molarity:.2e} -T {probe_molarity:.2e}"
         f" --best-match -m 1 -v F --single-primer-pcr F"
     )
     print(terminal_command)
@@ -712,7 +734,8 @@ def run_msa(path_to_assay_seq, path_to_amplicon, path_to_mafft_output):
         f"Running mafft to produce amplicon multiple sequence alignment for {path_to_amplicon}..."
     )
 
-    terminal_command = f"cat {path_to_assay_seq} {path_to_amplicon} | mafft --auto --thread -1 - > {path_to_mafft_output}"
+    # terminal_command = f"cat {path_to_assay_seq} {path_to_amplicon} | mafft --auto --thread -1 - > {path_to_mafft_output}"
+    terminal_command = f"mafft --auto --thread -1 {path_to_amplicon} | mafft --auto --thread -1 --addfragments {path_to_assay_seq} - > {path_to_mafft_output}"
     print(terminal_command)
     completed_process = subprocess.run(
         terminal_command,
@@ -760,7 +783,7 @@ def parse_msa_output(
     fwd_df = pd.DataFrame()
     rev_df = pd.DataFrame()
     probe_df = pd.DataFrame()
-
+    tech_dict = {}
     for record in align:
 
         if record.id == fwd_primer_name:
@@ -778,12 +801,12 @@ def parse_msa_output(
                 # print(str(fwd_record.seq))
                 if "n" in str(record.seq):
                     continue
-                elif (
-                    (record.id == fwd_primer_name)
-                    or (record.id == rev_primer_name)
-                    or (record.id == probe_name)
-                ):
+                elif record.id == fwd_primer_name:
+                    tech_dict["fwd_primer_align"] = str(record.seq)
                     continue
+                elif (record.id == rev_primer_name) or (record.id == probe_name):
+                    continue
+
                 fwd_primer_site_list.append(str(record.seq))
                 target_list.append(record.id)
 
@@ -811,11 +834,10 @@ def parse_msa_output(
                 # print(str(fwd_record.seq))
                 if "n" in str(record.seq):
                     continue
-                elif (
-                    (record.id == fwd_primer_name)
-                    or (record.id == rev_primer_name)
-                    or (record.id == probe_name)
-                ):
+                elif record.id == rev_primer_name:
+                    tech_dict["rev_primer_align"] = str(record.seq)
+                    continue
+                elif (record.id == fwd_primer_name) or (record.id == probe_name):
                     continue
                 rev_primer_site_list.append(str(record.seq))
                 target_list.append(record.id)
@@ -846,11 +868,10 @@ def parse_msa_output(
                 # print(str(fwd_record.seq))
                 if "n" in str(record.seq):
                     continue
-                elif (
-                    (record.id == fwd_primer_name)
-                    or (record.id == rev_primer_name)
-                    or (record.id == probe_name)
-                ):
+                elif record.id == probe_name:
+                    tech_dict["probe_align"] = str(record.seq)
+                    continue
+                elif (record.id == fwd_primer_name) or (record.id == rev_primer_name):
                     continue
                 probe_site_list.append(str(record.seq))
                 target_list.append(record.id)
@@ -913,15 +934,17 @@ def parse_msa_output(
 
             # print(msa_results)
             break
-
+    print(tech_dict)
     msa_results["assay_name"] = assay_name
     msa_results["total_input_seqs"] = total_input_seqs
     msa_results["amplicon_count"] = amplicon_count
     # print(msa_results)
-    return (msa_results,)
+    return (msa_results, tech_dict)
 
 
-def write_assay_report(assay_details, msa_results, threshold, path_to_assay_report):
+def write_assay_report(
+    assay_details, msa_results, threshold, path_to_assay_report, my_tech_dict
+):
     total_input_seqs = msa_results["total_input_seqs"].iloc[0]
     amplicon_count = msa_results["amplicon_count"].iloc[0]
     # taqman assay with probe
@@ -962,6 +985,65 @@ def write_assay_report(assay_details, msa_results, threshold, path_to_assay_repo
         all_summary.sort_values(
             ["amplicon_count"], axis=0, ascending=[False], inplace=True
         )
+
+        ################################### start mask ####################
+
+        fwd_list = list(my_tech_dict["fwd_primer_align"])
+        index = 0
+        for seqstr in all_summary["fwd_site"]:
+
+            # create a lit using the sequence string
+            seqstr_list = list(seqstr)
+            seqstr_list_masked = []
+            for n in range(len(seqstr_list)):
+                if seqstr_list[n] == fwd_list[n]:
+                    seqstr_list_masked.append(".")
+                else:
+                    seqstr_list_masked.append(seqstr_list[n])
+
+            # update the seq str with the masked str, dot represent the same as the input tech seq
+            all_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
+
+            index += 1
+
+            # print(seqstr_list_masked)
+            # print(all_summary)
+
+        rev_list = list(my_tech_dict["rev_primer_align"])
+        index = 0
+        for seqstr in all_summary["rev_site"]:
+
+            # create a lit using the sequence string
+            seqstr_list = list(seqstr)
+            seqstr_list_masked = []
+            for n in range(len(seqstr_list)):
+                if seqstr_list[n] == rev_list[n]:
+                    seqstr_list_masked.append(".")
+                else:
+                    seqstr_list_masked.append(seqstr_list[n])
+
+            # update the seq str with the masked str, dot represent the same as the input tech seq
+            all_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
+            index += 1
+
+        probe_list = list(my_tech_dict["probe_align"])
+        index = 0
+        for seqstr in all_summary["probe_site"]:
+
+            # create a lit using the sequence string
+            seqstr_list = list(seqstr)
+            seqstr_list_masked = []
+            for n in range(len(seqstr_list)):
+                if seqstr_list[n] == probe_list[n]:
+                    seqstr_list_masked.append(".")
+                else:
+                    seqstr_list_masked.append(seqstr_list[n])
+
+            # update the seq str with the masked str, dot represent the same as the input tech seq
+            all_summary.at[index, "probe_site"] = "".join(seqstr_list_masked)
+            index += 1
+        ################################# end of mask ###########################
+
         all_summary.to_csv(
             path_to_assay_report,
             sep="\t",
@@ -998,6 +1080,51 @@ def write_assay_report(assay_details, msa_results, threshold, path_to_assay_repo
         all_summary.sort_values(
             ["amplicon_count"], axis=0, ascending=[False], inplace=True
         )
+
+        ################################### start mask ####################
+
+        fwd_list = list(my_tech_dict["fwd_primer_align"])
+        index = 0
+        for seqstr in all_summary["fwd_site"]:
+
+            # create a lit using the sequence string
+            seqstr_list = list(seqstr)
+            seqstr_list_masked = []
+            for n in range(len(seqstr_list)):
+                if seqstr_list[n] == fwd_list[n]:
+                    seqstr_list_masked.append(".")
+                else:
+                    seqstr_list_masked.append(seqstr_list[n])
+
+            # update the seq str with the masked str, dot represent the same as the input tech seq
+            all_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
+
+            index += 1
+
+            # print(seqstr_list_masked)
+            # print(all_summary)
+
+        rev_list = list(my_tech_dict["rev_primer_align"])
+        index = 0
+        for seqstr in all_summary["rev_site"]:
+
+            # create a lit using the sequence string
+            seqstr_list = list(seqstr)
+            seqstr_list_masked = []
+            for n in range(len(seqstr_list)):
+                if seqstr_list[n] == rev_list[n]:
+                    seqstr_list_masked.append(".")
+                else:
+                    seqstr_list_masked.append(seqstr_list[n])
+
+            # update the seq str with the masked str, dot represent the same as the input tech seq
+            all_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
+            index += 1
+
+            # print(seqstr_list_masked)
+            # print(all_summary)
+
+        # print(all_summary)
         all_summary.to_csv(
             path_to_assay_report,
             sep="\t",
@@ -1013,6 +1140,7 @@ def write_variants_report(
     path_to_fwd_variant_report,
     path_to_rev_variant_report,
     path_to_probe_variant_report,
+    my_tech_dict,
 ):
 
     # Count targets detected by each assay
@@ -1044,6 +1172,28 @@ def write_variants_report(
     fwd_summary = fwd_summary[fwd_summary["fwd_in_amplicon_pct"] >= float(threshold)]
     # sort data frame
     fwd_summary.sort_values(["fwd_site_count"], axis=0, ascending=[False], inplace=True)
+    ################################### start mask ####################
+
+    fwd_list = list(my_tech_dict["fwd_primer_align"])
+    index = 0
+    for seqstr in fwd_summary["fwd_site"]:
+
+        # create a lit using the sequence string
+        seqstr_list = list(seqstr)
+        seqstr_list_masked = []
+        for n in range(len(seqstr_list)):
+            if seqstr_list[n] == fwd_list[n]:
+                seqstr_list_masked.append(".")
+            else:
+                seqstr_list_masked.append(seqstr_list[n])
+
+        # update the seq str with the masked str, dot represent the same as the input tech seq
+        fwd_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
+
+        index += 1
+
+    ################################# end of mask ###########################
+    # print(fwd_summary)
     fwd_summary.to_csv(
         path_to_fwd_variant_report,
         sep="\t",
@@ -1073,6 +1223,27 @@ def write_variants_report(
     )
     rev_summary = rev_summary[rev_summary["rev_in_amplicon_pct"] >= float(threshold)]
     rev_summary.sort_values(["rev_site_count"], axis=0, ascending=[False], inplace=True)
+
+    ################################### start mask ####################
+
+    rev_list = list(my_tech_dict["rev_primer_align"])
+    index = 0
+    for seqstr in rev_summary["rev_site"]:
+
+        # create a lit using the sequence string
+        seqstr_list = list(seqstr)
+        seqstr_list_masked = []
+        for n in range(len(seqstr_list)):
+            if seqstr_list[n] == rev_list[n]:
+                seqstr_list_masked.append(".")
+            else:
+                seqstr_list_masked.append(seqstr_list[n])
+
+        # update the seq str with the masked str, dot represent the same as the input tech seq
+        rev_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
+        index += 1
+
+    ################################# end of mask ###########################
     rev_summary.to_csv(
         path_to_rev_variant_report,
         sep="\t",
@@ -1107,6 +1278,25 @@ def write_variants_report(
         probe_summary.sort_values(
             ["probe_site_count"], axis=0, ascending=[False], inplace=True
         )
+        ################################### start mask ####################
+
+        probe_list = list(my_tech_dict["probe_align"])
+        index = 0
+        for seqstr in probe_summary["probe_site"]:
+
+            # create a lit using the sequence string
+            seqstr_list = list(seqstr)
+            seqstr_list_masked = []
+            for n in range(len(seqstr_list)):
+                if seqstr_list[n] == probe_list[n]:
+                    seqstr_list_masked.append(".")
+                else:
+                    seqstr_list_masked.append(seqstr_list[n])
+
+            # update the seq str with the masked str, dot represent the same as the input tech seq
+            probe_summary.at[index, "probe_site"] = "".join(seqstr_list_masked)
+            index += 1
+        ################################# end of mask ###########################
         probe_summary.to_csv(
             path_to_probe_variant_report,
             sep="\t",
