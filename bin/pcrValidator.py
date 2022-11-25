@@ -796,8 +796,8 @@ def parse_msa_output(
             fwd_coord_found = True
             fwd_primer_site_list = []
             target_list = []
-
-            for record in align[:, fwd_start:fwd_end]:
+            for record in align[:, 0:fwd_end]:
+                # for record in align[:, fwd_start:fwd_end]:
                 # print(str(fwd_record.seq))
                 if "n" in str(record.seq):
                     continue
@@ -830,7 +830,8 @@ def parse_msa_output(
             rev_coord_found = True
             rev_primer_site_list = []
             target_list = []
-            for record in align[:, rev_start:rev_end]:
+            for record in align[:, rev_start : len(rev_primer_alignment)]:
+                # for record in align[:, rev_start:rev_end]:
                 # print(str(fwd_record.seq))
                 if "n" in str(record.seq):
                     continue
