@@ -938,7 +938,7 @@ def parse_msa_output(
     print(tech_dict)
     msa_results["assay_name"] = assay_name
     msa_results["total_input_seqs"] = total_input_seqs
-    msa_results["amplicon_count"] = amplicon_count
+    msa_results["amplicon_detected"] = amplicon_count
     # print(msa_results)
     return (msa_results, tech_dict)
 
@@ -947,7 +947,7 @@ def write_assay_report(
     assay_details, msa_results, threshold, path_to_assay_report, my_tech_dict
 ):
     total_input_seqs = msa_results["total_input_seqs"].iloc[0]
-    amplicon_count = msa_results["amplicon_count"].iloc[0]
+    amplicon_count = msa_results["amplicon_detected"].iloc[0]
     # taqman assay with probe
     if assay_details[6] != "":
         all_cols = [
@@ -960,33 +960,51 @@ def write_assay_report(
             "total_errors",
         ]
         all_summary = (
-            msa_results.groupby(all_cols).size().reset_index(name="amplicon_count")
+            msa_results.groupby(all_cols).size().reset_index(name="amplicon_detected")
         )
 
-        all_summary["total_input_seq"] = total_input_seqs
-        all_summary["total_amplicon_count"] = amplicon_count
-        all_summary["amplicon_in_total_input_pct"] = round(
+        all_summary["total_count_seqdb"] = total_input_seqs
+        all_summary["total_amplicon"] = amplicon_count
+        all_summary["total_amplion_of_seqdb_pct"] = round(
             amplicon_count * 100 / total_input_seqs, 2
         )
-        all_summary["amplicon_in_total_amplicon_pct"] = round(
-            all_summary["amplicon_count"] * 100 / amplicon_count, 2
+
+        all_summary["amplicon_detected_of_total_amplicon_pct"] = round(
+            all_summary["amplicon_detected"] * 100 / amplicon_count, 2
         )
 
         all_summary.astype(
             {
                 "total_errors": "int",
-                "amplicon_count": "int",
-                "total_amplicon_count": "int",
-                "total_input_seq": "int",
+                "amplicon_detected": "int",
+                "total_amplicon": "int",
+                "total_count_seqdb": "int",
             }
         )
         all_summary = all_summary[
-            all_summary["amplicon_in_total_amplicon_pct"] >= float(threshold)
+            all_summary["amplicon_detected_of_total_amplicon_pct"] >= float(threshold)
         ]
         all_summary.sort_values(
-            ["amplicon_count"], axis=0, ascending=[False], inplace=True
+            ["amplicon_detected"], axis=0, ascending=[False], inplace=True
         )
-
+        # print(all_summary)
+        new_cols = [
+            "fwd_site",
+            "fwd_errors",
+            "probe_site",
+            "probe_errors",
+            "rev_site",
+            "rev_errors",
+            "total_errors",
+            "total_count_seqdb",
+            "total_amplicon",
+            "total_amplion_of_seqdb_pct",
+            "amplicon_detected",
+            "amplicon_detected_of_total_amplicon_pct",
+        ]
+        all_summary = all_summary.reindex(columns=new_cols)
+        # print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+        # print(all_summary)
         ################################### start mask ####################
 
         fwd_list = list(my_tech_dict["fwd_primer_align"])
@@ -1055,32 +1073,47 @@ def write_assay_report(
         # print(msa_results)
         all_cols = ["fwd_site", "fwd_errors", "rev_site", "rev_errors", "total_errors"]
         all_summary = (
-            msa_results.groupby(all_cols).size().reset_index(name="amplicon_count")
+            msa_results.groupby(all_cols).size().reset_index(name="amplicon_detected")
         )
 
-        all_summary["total_input_seq"] = total_input_seqs
-        all_summary["total_amplicon_count"] = amplicon_count
-        all_summary["amplicon_in_total_input_pct"] = round(
+        all_summary["total_count_seqdb"] = total_input_seqs
+        all_summary["total_amplicon"] = amplicon_count
+        all_summary["total_amplion_of_seqdb_pct"] = round(
             amplicon_count * 100 / total_input_seqs, 2
         )
-        all_summary["amplicon_in_total_amplicon_pct"] = round(
-            all_summary["amplicon_count"] * 100 / amplicon_count, 2
+        all_summary["amplicon_detected_of_total_amplicon_pct"] = round(
+            all_summary["amplicon_detected"] * 100 / amplicon_count, 2
         )
 
         all_summary.astype(
             {
                 "total_errors": "int",
-                "amplicon_count": "int",
-                "total_amplicon_count": "int",
-                "total_input_seq": "int",
+                "amplicon_found": "int",
+                "total_amplicon": "int",
+                "total_count_seqdb": "int",
             }
         )
         all_summary = all_summary[
-            all_summary["amplicon_in_total_amplicon_pct"] >= float(threshold)
+            all_summary["amplicon_detected_of_total_amplicon_pct"] >= float(threshold)
         ]
         all_summary.sort_values(
-            ["amplicon_count"], axis=0, ascending=[False], inplace=True
+            ["amplicon_detected"], axis=0, ascending=[False], inplace=True
         )
+        new_cols = [
+            "fwd_site",
+            "fwd_errors",
+            "probe_site",
+            "probe_errors",
+            "rev_site",
+            "rev_errors",
+            "total_errors",
+            "total_count_seqdb",
+            "total_amplicon",
+            "total_amplion_of_seqdb_pct",
+            "amplicon_detected",
+            "amplicon_detected_of_total_amplicon_pct",
+        ]
+        all_summary = all_summary.reindex(columns=new_cols)
 
         ################################### start mask ####################
 
@@ -1148,31 +1181,34 @@ def write_variants_report(
     targets_detected = msa_results["assay_name"].value_counts()
     amplicon_count = targets_detected[0]
 
-    amplicon_count = msa_results["amplicon_count"].iloc[0]
+    amplicon_count = msa_results["amplicon_detected"].iloc[0]
 
     fwd_summary = (
         msa_results.groupby(["fwd_site", "fwd_errors"])
         .size()
-        .reset_index(name="fwd_site_count")
+        .reset_index(name="amplicon_detected")
     )
 
-    fwd_summary["total_amplicon_count"] = amplicon_count
+    fwd_summary["total_amplicon"] = amplicon_count
 
-    fwd_summary["fwd_in_amplicon_pct"] = round(
-        fwd_summary["fwd_site_count"] * 100 / amplicon_count, 2
+    fwd_summary["amplicon_detected_pct"] = round(
+        fwd_summary["amplicon_detected"] * 100 / amplicon_count, 2
     )
 
     fwd_summary.astype(
         {
             "fwd_errors": "int",
-            "fwd_site_count": "int",
-            "total_amplicon_count": "int",
-            # "total_input_seq": "int",
+            "amplicon_detected": "int",
+            "total_amplicon": "int",
+            # "total_count_seqdb": "int",
         }
     )
-    fwd_summary = fwd_summary[fwd_summary["fwd_in_amplicon_pct"] >= float(threshold)]
+    fwd_summary = fwd_summary[fwd_summary["amplicon_detected_pct"] >= float(threshold)]
     # sort data frame
-    fwd_summary.sort_values(["fwd_site_count"], axis=0, ascending=[False], inplace=True)
+    fwd_summary.sort_values(
+        ["amplicon_detected"], axis=0, ascending=[False], inplace=True
+    )
+
     ################################### start mask ####################
 
     fwd_list = list(my_tech_dict["fwd_primer_align"])
@@ -1206,24 +1242,26 @@ def write_variants_report(
     rev_summary = (
         msa_results.groupby(["rev_site", "rev_errors"])
         .size()
-        .reset_index(name="rev_site_count")
+        .reset_index(name="amplicon_detected")
     )
 
-    rev_summary["total_amplicon_count"] = amplicon_count
+    rev_summary["total_amplicon"] = amplicon_count
 
-    rev_summary["rev_in_amplicon_pct"] = round(
-        rev_summary["rev_site_count"] * 100 / amplicon_count, 2
+    rev_summary["amplicon_detected_pct"] = round(
+        rev_summary["amplicon_detected"] * 100 / amplicon_count, 2
     )
 
     rev_summary.astype(
         {
             "rev_errors": "int",
-            "rev_site_count": "int",
-            "total_amplicon_count": "int",
+            "amplicon_detected": "int",
+            "total_amplicon": "int",
         }
     )
-    rev_summary = rev_summary[rev_summary["rev_in_amplicon_pct"] >= float(threshold)]
-    rev_summary.sort_values(["rev_site_count"], axis=0, ascending=[False], inplace=True)
+    rev_summary = rev_summary[rev_summary["amplicon_detected_pct"] >= float(threshold)]
+    rev_summary.sort_values(
+        ["amplicon_detected"], axis=0, ascending=[False], inplace=True
+    )
 
     ################################### start mask ####################
 
@@ -1257,27 +1295,27 @@ def write_variants_report(
         probe_summary = (
             msa_results.groupby(["probe_site", "probe_errors"])
             .size()
-            .reset_index(name="probe_site_count")
+            .reset_index(name="amplicon_detected")
         )
 
-        probe_summary["total_amplicon_count"] = amplicon_count
+        probe_summary["total_amplicon"] = amplicon_count
 
-        probe_summary["probe_in_amplicon_pct"] = round(
-            probe_summary["probe_site_count"] * 100 / amplicon_count, 2
+        probe_summary["amplicon_detected_pct"] = round(
+            probe_summary["amplicon_detected"] * 100 / amplicon_count, 2
         )
         probe_summary.astype(
             {
                 "probe_errors": "int",
-                "probe_site_count": "int",
-                "total_amplicon_count": "int",
-                # "total_input_seq": "int",
+                "amplicon_detected": "int",
+                "total_amplicon": "int",
+                # "total_count_seqdb": "int",
             }
         )
         probe_summary = probe_summary[
-            probe_summary["probe_in_amplicon_pct"] >= float(threshold)
+            probe_summary["amplicon_detected_pct"] >= float(threshold)
         ]
         probe_summary.sort_values(
-            ["probe_site_count"], axis=0, ascending=[False], inplace=True
+            ["amplicon_detected"], axis=0, ascending=[False], inplace=True
         )
         ################################### start mask ####################
 
