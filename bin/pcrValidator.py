@@ -97,7 +97,12 @@ def get_parser():
         default=0.25,
         help="Probe strand concentration (in uM)",
     )
-
+    tntblast_optional_group.add_argument(
+        "--mask_output",
+        default=False,
+        action="store_true",
+        help="Turn on output mask options to convert the identical bases as dot ",
+    )
     tntblast_parser.set_defaults(func=run_tntblast_analysis)
 
     blastn_parser = subparsers.add_parser(
@@ -172,6 +177,13 @@ def get_parser():
         default=False,
         action="store_true",
         help="Turn on best hit per subject sequence for blastn search",
+    )
+
+    blastn_optional_group.add_argument(
+        "--mask_output",
+        default=False,
+        action="store_true",
+        help="Turn on output mask options to convert the identical bases as dot ",
     )
 
     blastn_parser.set_defaults(func=run_blastn_analysis)
@@ -312,6 +324,7 @@ def run_blastn_analysis(args):
             assay_details,
             msa_results,
             args.minAbundant,
+            args.mask_output,
             path_to_assay_report,
             my_tech_dict,
         )
@@ -319,6 +332,7 @@ def run_blastn_analysis(args):
             assay_details,
             msa_results,
             args.minAbundant,
+            args.mask_output,
             path_to_fwd_variant_report,
             path_to_rev_variant_report,
             path_to_probe_variant_report,
@@ -410,6 +424,7 @@ def run_tntblast_analysis(args):
             assay_details,
             msa_results,
             args.minAbundant,
+            args.mask_output,
             path_to_assay_report,
             my_tech_dict,
         )
@@ -417,6 +432,7 @@ def run_tntblast_analysis(args):
             assay_details,
             msa_results,
             args.minAbundant,
+            args.mask_output,
             path_to_fwd_variant_report,
             path_to_rev_variant_report,
             path_to_probe_variant_report,
@@ -944,7 +960,12 @@ def parse_msa_output(
 
 
 def write_assay_report(
-    assay_details, msa_results, threshold, path_to_assay_report, my_tech_dict
+    assay_details,
+    msa_results,
+    threshold,
+    mask_output,
+    path_to_assay_report,
+    my_tech_dict,
 ):
     total_input_seqs = msa_results["total_input_seqs"].iloc[0]
     amplicon_count = msa_results["amplicon_detected"].iloc[0]
@@ -984,9 +1005,9 @@ def write_assay_report(
         all_summary = all_summary[
             all_summary["amplicon_detected_of_total_amplicon_pct"] >= float(threshold)
         ]
-        all_summary.sort_values(
-            ["amplicon_detected"], axis=0, ascending=[False], inplace=True
-        )
+        # all_summary.sort_values(
+        #     ["amplicon_detected"], axis=0, ascending=[False], inplace=True
+        # )
         # print(all_summary)
         new_cols = [
             "fwd_site",
@@ -1006,63 +1027,65 @@ def write_assay_report(
         # print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
         # print(all_summary)
         ################################### start mask ####################
+        if mask_output:
+            fwd_list = list(my_tech_dict["fwd_primer_align"])
+            index = 0
+            for seqstr in all_summary["fwd_site"]:
 
-        fwd_list = list(my_tech_dict["fwd_primer_align"])
-        index = 0
-        for seqstr in all_summary["fwd_site"]:
+                # create a lit using the sequence string
+                seqstr_list = list(seqstr)
+                seqstr_list_masked = []
+                for n in range(len(seqstr_list)):
+                    if seqstr_list[n] == fwd_list[n]:
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(seqstr_list[n])
 
-            # create a lit using the sequence string
-            seqstr_list = list(seqstr)
-            seqstr_list_masked = []
-            for n in range(len(seqstr_list)):
-                if seqstr_list[n] == fwd_list[n]:
-                    seqstr_list_masked.append(".")
-                else:
-                    seqstr_list_masked.append(seqstr_list[n])
+                # update the seq str with the masked str, dot represent the same as the input tech seq
+                all_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
 
-            # update the seq str with the masked str, dot represent the same as the input tech seq
-            all_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
+                index += 1
 
-            index += 1
+                # print(seqstr_list_masked)
+                # print(all_summary)
 
-            # print(seqstr_list_masked)
-            # print(all_summary)
+            rev_list = list(my_tech_dict["rev_primer_align"])
+            index = 0
+            for seqstr in all_summary["rev_site"]:
 
-        rev_list = list(my_tech_dict["rev_primer_align"])
-        index = 0
-        for seqstr in all_summary["rev_site"]:
+                # create a lit using the sequence string
+                seqstr_list = list(seqstr)
+                seqstr_list_masked = []
+                for n in range(len(seqstr_list)):
+                    if seqstr_list[n] == rev_list[n]:
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(seqstr_list[n])
 
-            # create a lit using the sequence string
-            seqstr_list = list(seqstr)
-            seqstr_list_masked = []
-            for n in range(len(seqstr_list)):
-                if seqstr_list[n] == rev_list[n]:
-                    seqstr_list_masked.append(".")
-                else:
-                    seqstr_list_masked.append(seqstr_list[n])
+                # update the seq str with the masked str, dot represent the same as the input tech seq
+                all_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
+                index += 1
 
-            # update the seq str with the masked str, dot represent the same as the input tech seq
-            all_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
-            index += 1
+            probe_list = list(my_tech_dict["probe_align"])
+            index = 0
+            for seqstr in all_summary["probe_site"]:
 
-        probe_list = list(my_tech_dict["probe_align"])
-        index = 0
-        for seqstr in all_summary["probe_site"]:
+                # create a lit using the sequence string
+                seqstr_list = list(seqstr)
+                seqstr_list_masked = []
+                for n in range(len(seqstr_list)):
+                    if seqstr_list[n] == probe_list[n]:
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(seqstr_list[n])
 
-            # create a lit using the sequence string
-            seqstr_list = list(seqstr)
-            seqstr_list_masked = []
-            for n in range(len(seqstr_list)):
-                if seqstr_list[n] == probe_list[n]:
-                    seqstr_list_masked.append(".")
-                else:
-                    seqstr_list_masked.append(seqstr_list[n])
-
-            # update the seq str with the masked str, dot represent the same as the input tech seq
-            all_summary.at[index, "probe_site"] = "".join(seqstr_list_masked)
-            index += 1
+                # update the seq str with the masked str, dot represent the same as the input tech seq
+                all_summary.at[index, "probe_site"] = "".join(seqstr_list_masked)
+                index += 1
         ################################# end of mask ###########################
-
+        all_summary.sort_values(
+            ["amplicon_detected"], axis=0, ascending=[False], inplace=True
+        )
         all_summary.to_csv(
             path_to_assay_report,
             sep="\t",
@@ -1096,9 +1119,7 @@ def write_assay_report(
         all_summary = all_summary[
             all_summary["amplicon_detected_of_total_amplicon_pct"] >= float(threshold)
         ]
-        all_summary.sort_values(
-            ["amplicon_detected"], axis=0, ascending=[False], inplace=True
-        )
+
         new_cols = [
             "fwd_site",
             "fwd_errors",
@@ -1116,49 +1137,52 @@ def write_assay_report(
         all_summary = all_summary.reindex(columns=new_cols)
 
         ################################### start mask ####################
+        if mask_output:
+            fwd_list = list(my_tech_dict["fwd_primer_align"])
+            index = 0
+            for seqstr in all_summary["fwd_site"]:
 
-        fwd_list = list(my_tech_dict["fwd_primer_align"])
-        index = 0
-        for seqstr in all_summary["fwd_site"]:
+                # create a lit using the sequence string
+                seqstr_list = list(seqstr)
+                seqstr_list_masked = []
+                for n in range(len(seqstr_list)):
+                    if seqstr_list[n] == fwd_list[n]:
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(seqstr_list[n])
 
-            # create a lit using the sequence string
-            seqstr_list = list(seqstr)
-            seqstr_list_masked = []
-            for n in range(len(seqstr_list)):
-                if seqstr_list[n] == fwd_list[n]:
-                    seqstr_list_masked.append(".")
-                else:
-                    seqstr_list_masked.append(seqstr_list[n])
+                # update the seq str with the masked str, dot represent the same as the input tech seq
+                all_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
 
-            # update the seq str with the masked str, dot represent the same as the input tech seq
-            all_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
+                index += 1
 
-            index += 1
+                # print(seqstr_list_masked)
+                # print(all_summary)
 
-            # print(seqstr_list_masked)
-            # print(all_summary)
+            rev_list = list(my_tech_dict["rev_primer_align"])
+            index = 0
+            for seqstr in all_summary["rev_site"]:
 
-        rev_list = list(my_tech_dict["rev_primer_align"])
-        index = 0
-        for seqstr in all_summary["rev_site"]:
+                # create a lit using the sequence string
+                seqstr_list = list(seqstr)
+                seqstr_list_masked = []
+                for n in range(len(seqstr_list)):
+                    if seqstr_list[n] == rev_list[n]:
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(seqstr_list[n])
 
-            # create a lit using the sequence string
-            seqstr_list = list(seqstr)
-            seqstr_list_masked = []
-            for n in range(len(seqstr_list)):
-                if seqstr_list[n] == rev_list[n]:
-                    seqstr_list_masked.append(".")
-                else:
-                    seqstr_list_masked.append(seqstr_list[n])
+                # update the seq str with the masked str, dot represent the same as the input tech seq
+                all_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
+                index += 1
 
-            # update the seq str with the masked str, dot represent the same as the input tech seq
-            all_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
-            index += 1
-
-            # print(seqstr_list_masked)
-            # print(all_summary)
+                # print(seqstr_list_masked)
+                # print(all_summary)
 
         # print(all_summary)
+        all_summary.sort_values(
+            ["amplicon_detected"], axis=0, ascending=[False], inplace=True
+        )
         all_summary.to_csv(
             path_to_assay_report,
             sep="\t",
@@ -1171,6 +1195,7 @@ def write_variants_report(
     assay_details,
     msa_results,
     threshold,
+    mask_output,
     path_to_fwd_variant_report,
     path_to_rev_variant_report,
     path_to_probe_variant_report,
@@ -1204,33 +1229,39 @@ def write_variants_report(
         }
     )
     fwd_summary = fwd_summary[fwd_summary["amplicon_detected_pct"] >= float(threshold)]
+
+    ################################### start mask ####################
+    if mask_output:
+        fwd_list = list(my_tech_dict["fwd_primer_align"])
+        index = 0
+        # print("fwd_list")
+        # print(fwd_list)
+        for seqstr in fwd_summary["fwd_site"]:
+
+            # create a lit using the sequence string
+            seqstr_list = list(seqstr)
+            # print("fwd_list")
+            # print(fwd_list)
+            # print(seqstr_list)
+            seqstr_list_masked = []
+            for n in range(len(seqstr_list)):
+                if seqstr_list[n] == fwd_list[n]:
+                    seqstr_list_masked.append(".")
+                else:
+                    # print(str(n) + "=" + seqstr_list[n])
+                    seqstr_list_masked.append(seqstr_list[n])
+
+            # update the seq str with the masked str, dot represent the same as the input tech seq
+            fwd_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
+
+            index += 1
+
+    ################################# end of mask ###########################
     # sort data frame
     fwd_summary.sort_values(
         ["amplicon_detected"], axis=0, ascending=[False], inplace=True
     )
-
-    ################################### start mask ####################
-
-    fwd_list = list(my_tech_dict["fwd_primer_align"])
-    index = 0
-    for seqstr in fwd_summary["fwd_site"]:
-
-        # create a lit using the sequence string
-        seqstr_list = list(seqstr)
-        seqstr_list_masked = []
-        for n in range(len(seqstr_list)):
-            if seqstr_list[n] == fwd_list[n]:
-                seqstr_list_masked.append(".")
-            else:
-                seqstr_list_masked.append(seqstr_list[n])
-
-        # update the seq str with the masked str, dot represent the same as the input tech seq
-        fwd_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
-
-        index += 1
-
-    ################################# end of mask ###########################
-    # print(fwd_summary)
+    print(fwd_summary)
     fwd_summary.to_csv(
         path_to_fwd_variant_report,
         sep="\t",
@@ -1259,30 +1290,32 @@ def write_variants_report(
         }
     )
     rev_summary = rev_summary[rev_summary["amplicon_detected_pct"] >= float(threshold)]
+
+    ################################### start mask ####################
+    if mask_output:
+        rev_list = list(my_tech_dict["rev_primer_align"])
+        index = 0
+        for seqstr in rev_summary["rev_site"]:
+
+            # create a lit using the sequence string
+            seqstr_list = list(seqstr)
+            seqstr_list_masked = []
+
+            for n in range(len(seqstr_list)):
+                if seqstr_list[n] == rev_list[n]:
+                    seqstr_list_masked.append(".")
+                else:
+                    seqstr_list_masked.append(seqstr_list[n])
+
+            # update the seq str with the masked str, dot represent the same as the input tech seq
+            rev_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
+            index += 1
+
+    ################################# end of mask ###########################
     rev_summary.sort_values(
         ["amplicon_detected"], axis=0, ascending=[False], inplace=True
     )
 
-    ################################### start mask ####################
-
-    rev_list = list(my_tech_dict["rev_primer_align"])
-    index = 0
-    for seqstr in rev_summary["rev_site"]:
-
-        # create a lit using the sequence string
-        seqstr_list = list(seqstr)
-        seqstr_list_masked = []
-        for n in range(len(seqstr_list)):
-            if seqstr_list[n] == rev_list[n]:
-                seqstr_list_masked.append(".")
-            else:
-                seqstr_list_masked.append(seqstr_list[n])
-
-        # update the seq str with the masked str, dot represent the same as the input tech seq
-        rev_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
-        index += 1
-
-    ################################# end of mask ###########################
     rev_summary.to_csv(
         path_to_rev_variant_report,
         sep="\t",
@@ -1314,28 +1347,29 @@ def write_variants_report(
         probe_summary = probe_summary[
             probe_summary["amplicon_detected_pct"] >= float(threshold)
         ]
+
+        ################################### start mask ####################
+        if mask_output:
+            probe_list = list(my_tech_dict["probe_align"])
+            index = 0
+            for seqstr in probe_summary["probe_site"]:
+
+                # create a lit using the sequence string
+                seqstr_list = list(seqstr)
+                seqstr_list_masked = []
+                for n in range(len(seqstr_list)):
+                    if seqstr_list[n] == probe_list[n]:
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(seqstr_list[n])
+
+                # update the seq str with the masked str, dot represent the same as the input tech seq
+                probe_summary.at[index, "probe_site"] = "".join(seqstr_list_masked)
+                index += 1
+        ################################# end of mask ###########################
         probe_summary.sort_values(
             ["amplicon_detected"], axis=0, ascending=[False], inplace=True
         )
-        ################################### start mask ####################
-
-        probe_list = list(my_tech_dict["probe_align"])
-        index = 0
-        for seqstr in probe_summary["probe_site"]:
-
-            # create a lit using the sequence string
-            seqstr_list = list(seqstr)
-            seqstr_list_masked = []
-            for n in range(len(seqstr_list)):
-                if seqstr_list[n] == probe_list[n]:
-                    seqstr_list_masked.append(".")
-                else:
-                    seqstr_list_masked.append(seqstr_list[n])
-
-            # update the seq str with the masked str, dot represent the same as the input tech seq
-            probe_summary.at[index, "probe_site"] = "".join(seqstr_list_masked)
-            index += 1
-        ################################# end of mask ###########################
         probe_summary.to_csv(
             path_to_probe_variant_report,
             sep="\t",

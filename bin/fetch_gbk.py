@@ -4,6 +4,12 @@ from Bio import Entrez
 from Bio import SeqIO
 from Bio.Seq import UndefinedSequenceError
 
+# urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self signed certificate in certificate chain (_ssl.c:1131)>
+# cancel ssl certificate verify will solve the problem
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
+
 __version__ = "0.1.0"
 __author__ = "Xiaoli Dong"
 
