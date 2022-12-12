@@ -19,6 +19,26 @@ from Bio.Blast import NCBIXML
 
 __version__ = "0.1.0"
 __author__ = "Xiaoli Dong"
+pd.set_option("display.float_format", "{:.2f}".format)
+iupac_letters = "RYWSMKHBVDN"
+
+iupac_dict = {
+    "A": ["A"],
+    "G": ["G"],
+    "C": ["C"],
+    "T": ["T"],
+    "R": ["A", "G"],
+    "Y": ["C", "T"],
+    "W": ["A", "T"],
+    "S": ["G", "C"],
+    "M": ["A", "C"],
+    "K": ["G", "T"],
+    "H": ["A", "C", "T"],
+    "B": ["C", "G", "T"],
+    "V": ["A", "C", "G"],
+    "D": ["A", "G", "T"],
+    "N": ["A", "C", "G", "T"],
+}
 
 
 def get_parser():
@@ -103,6 +123,12 @@ def get_parser():
         action="store_true",
         help="Turn on output mask options to convert the identical bases as dot ",
     )
+    tntblast_optional_group.add_argument(
+        "--enable_iupac",
+        default=False,
+        action="store_true",
+        help="Turn on iupac option to enable iupac degeneration during the sequence mask ",
+    )
     tntblast_parser.set_defaults(func=run_tntblast_analysis)
 
     blastn_parser = subparsers.add_parser(
@@ -185,7 +211,12 @@ def get_parser():
         action="store_true",
         help="Turn on output mask options to convert the identical bases as dot ",
     )
-
+    blastn_optional_group.add_argument(
+        "--enable_iupac",
+        default=False,
+        action="store_true",
+        help="Turn on iupac option to enable iupac degeneration during the sequence mask ",
+    )
     blastn_parser.set_defaults(func=run_blastn_analysis)
 
     return parser
@@ -325,6 +356,7 @@ def run_blastn_analysis(args):
             msa_results,
             args.minAbundant,
             args.mask_output,
+            args.enable_iupac,
             path_to_assay_report,
             my_tech_dict,
         )
@@ -333,6 +365,7 @@ def run_blastn_analysis(args):
             msa_results,
             args.minAbundant,
             args.mask_output,
+            args.enable_iupac,
             path_to_fwd_variant_report,
             path_to_rev_variant_report,
             path_to_probe_variant_report,
@@ -425,6 +458,7 @@ def run_tntblast_analysis(args):
             msa_results,
             args.minAbundant,
             args.mask_output,
+            args.enable_iupac,
             path_to_assay_report,
             my_tech_dict,
         )
@@ -433,6 +467,7 @@ def run_tntblast_analysis(args):
             msa_results,
             args.minAbundant,
             args.mask_output,
+            args.enable_iupac,
             path_to_fwd_variant_report,
             path_to_rev_variant_report,
             path_to_probe_variant_report,
@@ -949,7 +984,6 @@ def parse_msa_output(
                 # index_label="variant_name",
             )
 
-            # print(msa_results)
             break
     print(tech_dict)
     msa_results["assay_name"] = assay_name
@@ -964,6 +998,7 @@ def write_assay_report(
     msa_results,
     threshold,
     mask_output,
+    enable_iupac,
     path_to_assay_report,
     my_tech_dict,
 ):
@@ -1035,15 +1070,24 @@ def write_assay_report(
                 # create a lit using the sequence string
                 seqstr_list = list(seqstr)
                 seqstr_list_masked = []
-                for n in range(len(seqstr_list)):
-                    if seqstr_list[n] == fwd_list[n]:
-                        seqstr_list_masked.append(".")
+                errors = 0
+                for i, letter in enumerate(seqstr_list):
+                    if enable_iupac:
+                        if letter.upper() in iupac_dict[fwd_list[i].upper()]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
+                            errors += 1
                     else:
-                        seqstr_list_masked.append(seqstr_list[n])
+                        if letter == fwd_list[i]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
 
                 # update the seq str with the masked str, dot represent the same as the input tech seq
                 all_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
-
+                if enable_iupac:
+                    all_summary.at[index, "fwd_errors"] = errors
                 index += 1
 
                 # print(seqstr_list_masked)
@@ -1051,45 +1095,102 @@ def write_assay_report(
 
             rev_list = list(my_tech_dict["rev_primer_align"])
             index = 0
-            for seqstr in all_summary["rev_site"]:
 
+            for seqstr in all_summary["rev_site"]:
+                errors = 0
                 # create a lit using the sequence string
                 seqstr_list = list(seqstr)
                 seqstr_list_masked = []
-                for n in range(len(seqstr_list)):
-                    if seqstr_list[n] == rev_list[n]:
-                        seqstr_list_masked.append(".")
+                for i, letter in enumerate(seqstr_list):
+                    if enable_iupac:
+                        if letter.upper() in iupac_dict[rev_list[i].upper()]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
+                            errors += 1
                     else:
-                        seqstr_list_masked.append(seqstr_list[n])
+                        if letter == rev_list[i]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
 
                 # update the seq str with the masked str, dot represent the same as the input tech seq
                 all_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
+                if enable_iupac:
+                    all_summary.at[index, "rev_errors"] = errors
                 index += 1
 
             probe_list = list(my_tech_dict["probe_align"])
             index = 0
             for seqstr in all_summary["probe_site"]:
-
+                # print("seqstr=" + seqstr + ", probe=" + my_tech_dict["probe_align"])
+                errors = 0
                 # create a lit using the sequence string
                 seqstr_list = list(seqstr)
                 seqstr_list_masked = []
-                for n in range(len(seqstr_list)):
-                    if seqstr_list[n] == probe_list[n]:
-                        seqstr_list_masked.append(".")
+                for i, letter in enumerate(seqstr_list):
+                    if enable_iupac:
+                        if letter.upper() in iupac_dict[probe_list[i].upper()]:
+                            # print("letter=" + letter)
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
+                            errors += 1
                     else:
-                        seqstr_list_masked.append(seqstr_list[n])
+                        if letter == probe_list[i]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
 
                 # update the seq str with the masked str, dot represent the same as the input tech seq
+                # print("".join(seqstr_list_masked))
                 all_summary.at[index, "probe_site"] = "".join(seqstr_list_masked)
+                if enable_iupac:
+                    all_summary.at[index, "probe_errors"] = errors
                 index += 1
         ################################# end of mask ###########################
-        all_summary.sort_values(
+
+        # if enable_iupac:
+        # update total_errors
+        all_summary["total_errors"] = (
+            all_summary["fwd_errors"]
+            + all_summary["rev_errors"]
+            + all_summary["probe_errors"]
+        )
+        # print(all_summary)
+        # when iupac enable, after degenerated, some of the different site will become the same
+        final_all_summary = all_summary.groupby(
+            [
+                "fwd_site",
+                "fwd_errors",
+                "probe_site",
+                "probe_errors",
+                "rev_site",
+                "rev_errors",
+                "total_errors",
+                "total_count_seqdb",
+                "total_amplicon",
+                "total_amplion_of_seqdb_pct",
+            ]
+        ).sum()
+
+        final_all_summary.sort_values(
             ["amplicon_detected"], axis=0, ascending=[False], inplace=True
         )
-        all_summary.to_csv(
+        final_all_summary = final_all_summary.reset_index()
+
+        # print(final_all_summary)
+        final_all_summary["amplicon_detected_of_total_amplicon_pct"] = round(
+            final_all_summary["amplicon_detected_of_total_amplicon_pct"], 2
+        )
+        final_all_summary["total_amplion_of_seqdb_pct"] = round(
+            final_all_summary["total_amplion_of_seqdb_pct"], 2
+        )
+
+        final_all_summary.to_csv(
             path_to_assay_report,
             sep="\t",
-            index=False,
+            index=True,
             # index_label="variant_id",
         )
     else:
@@ -1111,7 +1212,7 @@ def write_assay_report(
         all_summary.astype(
             {
                 "total_errors": "int",
-                "amplicon_found": "int",
+                "amplicon_detected": "int",
                 "total_amplicon": "int",
                 "total_count_seqdb": "int",
             }
@@ -1123,8 +1224,6 @@ def write_assay_report(
         new_cols = [
             "fwd_site",
             "fwd_errors",
-            "probe_site",
-            "probe_errors",
             "rev_site",
             "rev_errors",
             "total_errors",
@@ -1141,15 +1240,23 @@ def write_assay_report(
             fwd_list = list(my_tech_dict["fwd_primer_align"])
             index = 0
             for seqstr in all_summary["fwd_site"]:
-
+                errors = 0
                 # create a lit using the sequence string
                 seqstr_list = list(seqstr)
                 seqstr_list_masked = []
-                for n in range(len(seqstr_list)):
-                    if seqstr_list[n] == fwd_list[n]:
-                        seqstr_list_masked.append(".")
+                for i, letter in enumerate(seqstr_list):
+
+                    if enable_iupac:
+                        if letter.upper() in iupac_dict[fwd_list[i].upper()]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
+                            errors += 1
                     else:
-                        seqstr_list_masked.append(seqstr_list[n])
+                        if letter == fwd_list[i]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
 
                 # update the seq str with the masked str, dot represent the same as the input tech seq
                 all_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
@@ -1162,15 +1269,23 @@ def write_assay_report(
             rev_list = list(my_tech_dict["rev_primer_align"])
             index = 0
             for seqstr in all_summary["rev_site"]:
-
+                errors = 0
                 # create a lit using the sequence string
                 seqstr_list = list(seqstr)
                 seqstr_list_masked = []
-                for n in range(len(seqstr_list)):
-                    if seqstr_list[n] == rev_list[n]:
-                        seqstr_list_masked.append(".")
+
+                for i, letter in enumerate(seqstr_list):
+                    if enable_iupac:
+                        if letter.upper() in iupac_dict[rev_list[i].upper()]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
+                            errors += 1
                     else:
-                        seqstr_list_masked.append(seqstr_list[n])
+                        if letter == rev_list[i]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
 
                 # update the seq str with the masked str, dot represent the same as the input tech seq
                 all_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
@@ -1178,15 +1293,48 @@ def write_assay_report(
 
                 # print(seqstr_list_masked)
                 # print(all_summary)
-
+        ##############################
         # print(all_summary)
-        all_summary.sort_values(
+
+        if enable_iupac:
+            # update total_errors
+            all_summary["total_errors"] = (
+                all_summary["fwd_errors"]
+                + all_summary["rev_errors"]
+                # + all_summary["probe_errors"]
+            )
+        # when iupac enable, after degenerated, some of the different site will become the same
+        final_all_summary = all_summary.groupby(
+            [
+                "fwd_site",
+                "fwd_errors",
+                "rev_site",
+                "rev_errors",
+                "total_errors",
+                "total_count_seqdb",
+                "total_amplicon",
+                "total_amplion_of_seqdb_pct",
+            ]
+        ).sum()
+
+        final_all_summary.sort_values(
             ["amplicon_detected"], axis=0, ascending=[False], inplace=True
         )
-        all_summary.to_csv(
+        final_all_summary = final_all_summary.reset_index()
+        # print(type(final_all_summary))
+        # print(final_all_summary)
+
+        # final_all_summary['amplicon_detected_of_total_amplicon_pct']
+        final_all_summary["amplicon_detected_of_total_amplicon_pct"] = round(
+            final_all_summary["amplicon_detected_of_total_amplicon_pct"], 2
+        )
+        final_all_summary["total_amplion_of_seqdb_pct"] = round(
+            final_all_summary["total_amplion_of_seqdb_pct"], 2
+        )
+        final_all_summary.to_csv(
             path_to_assay_report,
             sep="\t",
-            index=False,
+            index=True,
             # index_label="variant_id",
         )
 
@@ -1196,6 +1344,7 @@ def write_variants_report(
     msa_results,
     threshold,
     mask_output,
+    enable_iupac,
     path_to_fwd_variant_report,
     path_to_rev_variant_report,
     path_to_probe_variant_report,
@@ -1244,30 +1393,49 @@ def write_variants_report(
             # print(fwd_list)
             # print(seqstr_list)
             seqstr_list_masked = []
-            for n in range(len(seqstr_list)):
-                if seqstr_list[n] == fwd_list[n]:
-                    seqstr_list_masked.append(".")
+            errors = 0
+            for i, letter in enumerate(seqstr_list):
+                if enable_iupac:
+                    if letter.upper() in iupac_dict[fwd_list[i].upper()]:
+
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(letter)
+                        errors += 1
                 else:
-                    # print(str(n) + "=" + seqstr_list[n])
-                    seqstr_list_masked.append(seqstr_list[n])
+                    if letter == fwd_list[i]:
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(letter)
 
             # update the seq str with the masked str, dot represent the same as the input tech seq
             fwd_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
+            if enable_iupac:
+                fwd_summary.at[index, "fwd_errors"] = errors
 
             index += 1
 
     ################################# end of mask ###########################
-    # sort data frame
-    fwd_summary.sort_values(
+
+    # when iupac enable, after degenerated, some of the different site will become the same
+    final_fwd_summary = fwd_summary.groupby(["fwd_site", "fwd_errors"]).sum()
+
+    final_fwd_summary.sort_values(
         ["amplicon_detected"], axis=0, ascending=[False], inplace=True
     )
-    print(fwd_summary)
-    fwd_summary.to_csv(
+    final_fwd_summary = final_fwd_summary.reset_index()
+
+    # print(final_fwd_summary)
+    final_fwd_summary["amplicon_detected_pct"] = round(
+        final_fwd_summary["amplicon_detected_pct"], 2
+    )
+    final_fwd_summary.to_csv(
         path_to_fwd_variant_report,
         sep="\t",
-        index=False,
+        index=True,
         # index_label="variant_id",
     )
+
     # print(final_fwd_summary)
 
     rev_summary = (
@@ -1300,28 +1468,48 @@ def write_variants_report(
             # create a lit using the sequence string
             seqstr_list = list(seqstr)
             seqstr_list_masked = []
+            errors = 0
+            for i, letter in enumerate(seqstr_list):
 
-            for n in range(len(seqstr_list)):
-                if seqstr_list[n] == rev_list[n]:
-                    seqstr_list_masked.append(".")
+                if enable_iupac:
+                    if letter.upper() in iupac_dict[rev_list[i].upper()]:
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(letter)
+                        errors += 1
                 else:
-                    seqstr_list_masked.append(seqstr_list[n])
+                    if letter == rev_list[i]:
+                        seqstr_list_masked.append(".")
+                    else:
+                        seqstr_list_masked.append(letter)
 
             # update the seq str with the masked str, dot represent the same as the input tech seq
             rev_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
+            if enable_iupac:
+                rev_summary.at[index, "rev_errors"] = errors
             index += 1
 
     ################################# end of mask ###########################
-    rev_summary.sort_values(
+
+    # when iupac enable, after degenerated, some of the different site will become the same
+    final_rev_summary = rev_summary.groupby(["rev_site", "rev_errors"]).sum()
+
+    final_rev_summary.sort_values(
         ["amplicon_detected"], axis=0, ascending=[False], inplace=True
     )
+    final_rev_summary = final_rev_summary.reset_index()
 
-    rev_summary.to_csv(
+    # print(final_fwd_summary)
+    final_rev_summary["amplicon_detected_pct"] = round(
+        final_rev_summary["amplicon_detected_pct"], 2
+    )
+    final_rev_summary.to_csv(
         path_to_rev_variant_report,
         sep="\t",
-        index=False,
+        index=True,
         # index_label="variant_id",
     )
+
     # print(final_rev_summary)
 
     if assay_details[6] != "":
@@ -1352,28 +1540,48 @@ def write_variants_report(
         if mask_output:
             probe_list = list(my_tech_dict["probe_align"])
             index = 0
+            errors = 0
             for seqstr in probe_summary["probe_site"]:
 
                 # create a lit using the sequence string
                 seqstr_list = list(seqstr)
                 seqstr_list_masked = []
-                for n in range(len(seqstr_list)):
-                    if seqstr_list[n] == probe_list[n]:
-                        seqstr_list_masked.append(".")
+                for i, letter in enumerate(seqstr_list):
+                    if enable_iupac:
+                        if letter.upper() in iupac_dict[probe_list[i].upper()]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
+                            errors += 1
                     else:
-                        seqstr_list_masked.append(seqstr_list[n])
-
+                        if letter == probe_list[i]:
+                            seqstr_list_masked.append(".")
+                        else:
+                            seqstr_list_masked.append(letter)
                 # update the seq str with the masked str, dot represent the same as the input tech seq
                 probe_summary.at[index, "probe_site"] = "".join(seqstr_list_masked)
+                if enable_iupac:
+                    probe_summary.at[index, "probe_errors"] = errors
                 index += 1
         ################################# end of mask ###########################
-        probe_summary.sort_values(
+        # when iupac enable, after degenerated, some of the different site will become the same
+        final_probe_summary = probe_summary.groupby(
+            ["probe_site", "probe_errors"]
+        ).sum()
+
+        final_probe_summary.sort_values(
             ["amplicon_detected"], axis=0, ascending=[False], inplace=True
         )
-        probe_summary.to_csv(
+        final_probe_summary = final_probe_summary.reset_index()
+
+        # print(final_fwd_summary)
+        final_probe_summary["amplicon_detected_pct"] = round(
+            final_probe_summary["amplicon_detected_pct"], 2
+        )
+        final_probe_summary.to_csv(
             path_to_probe_variant_report,
             sep="\t",
-            index=False,
+            index=True,
             # index_label="variant_id",
         )
         # print(probe_summary)
