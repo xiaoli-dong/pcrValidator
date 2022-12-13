@@ -1,0 +1,4 @@
+	probe_site	probe_errors	amplicon_detected	total_amplicon	amplicon_detected_pct
+0	................	1	1275	1303	97.85
+1	.a..............	1	12	1303	0.92
+2	.............y..	2	1	1303	0.08
