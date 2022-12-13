@@ -1,4 +1,0 @@
- python ../../bin/fetch_gbk.py -q txid10335[Organism:noexp]  -d nucleotide -e  test@example.com -r gb
-
-Find 1749 sequences nd download 1748 sequences
-CAKLQY000000000.1 sequence content is undefined
