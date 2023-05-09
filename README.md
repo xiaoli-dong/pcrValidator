@@ -30,7 +30,7 @@ Now, you are ready to run the program
 
 # Prepare the reference database for searching
 
-If you do not have reference set, you can use our provided script to download your interested references from NCBI to use as the searching databaes. To use the script, user needs to provide a query string. The query string can be built by using ncbi's [Nucleotide Advanced Search Builder](https://www.ncbi.nlm.nih.gov/nuccore/advanced/)
+If you do not have reference sequences, you can use the script below to download your preferred sequences from NCBI. To use the script, user needs to provide a query string. The query string can be built by using ncbi's [Nucleotide Advanced Search Builder](https://www.ncbi.nlm.nih.gov/nuccore/advanced/)
 
 ```
 # check the script input options:
