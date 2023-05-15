@@ -16,7 +16,7 @@ import distance
 from Bio.Seq import Seq
 from Bio import AlignIO
 from Bio.Blast import NCBIXML
-
+from Bio import SeqIO
 __version__ = "0.1.0"
 __author__ = "Xiaoli Dong"
 pd.set_option("display.float_format", "{:.2f}".format)
@@ -226,6 +226,10 @@ def set_pathes(outdir, prefix, assay_name, search_tool_name):
     path_to_assay_seq = os.path.join(
         outdir, prefix + "_" + assay_name + "_msa_assay.fasta"
     )
+    path_to_amplicon_before_correction = os.path.join(
+        outdir,
+        prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon.no_correction.fasta",
+    )
     path_to_amplicon = os.path.join(
         outdir,
         prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon.fasta",
@@ -258,6 +262,7 @@ def set_pathes(outdir, prefix, assay_name, search_tool_name):
     )
     return (
         path_to_assay_seq,
+        path_to_amplicon_before_correction,
         path_to_amplicon,
         path_to_mafft_output,
         path_to_pcr_report,
@@ -300,6 +305,7 @@ def run_blastn_analysis(args):
         Path(assay_outdir).mkdir(parents=True, exist_ok=True)
         (
             path_to_assay_seq,
+            path_to_amplicon_before_correction,
             path_to_amplicon,
             path_to_mafft_output,
             path_to_pcr_report,
@@ -332,10 +338,13 @@ def run_blastn_analysis(args):
             args.max_target_seqs,
             args.word_size,
             args.evalue,
-            args.subject_besthit,
+            args.subject_besthit
         )
-        parse_blastn_output(path_to_blastn_xml_output, path_to_amplicon, args.qcov)
-
+        #path_to_amplicon,amplicon_coordinates  = parse_blastn_output(path_to_blastn_xml_output, path_to_amplicon, args.qcov)
+        path_to_amplicon = parse_blastn_output(path_to_blastn_xml_output, path_to_amplicon_before_correction, path_to_amplicon, args.qcov, ref_seq_file_path)
+        
+        #refine_amplicon(ref_seq_file_path, path_to_amplicon, amplicon_coordinates)
+        #print(amplicon_coordinates)
         if os.stat(path_to_amplicon).st_size == 0:
             print(
                 f"there is no identified target amplicons for {assay_name} using blastn and proceed to the next assay ... "
@@ -409,6 +418,7 @@ def run_tntblast_analysis(args):
         Path(assay_outdir).mkdir(parents=True, exist_ok=True)
         (
             path_to_assay_seq,
+            path_to_amplicon_before_correction,
             path_to_amplicon,
             path_to_mafft_output,
             path_to_pcr_report,
@@ -435,6 +445,7 @@ def run_tntblast_analysis(args):
             args.E,
             args.t,
             args.T,
+            path_to_amplicon_before_correction,
             path_to_amplicon,
         )
         if os.stat(path_to_amplicon).st_size == 0:
@@ -592,6 +603,7 @@ def run_TNTBLAST(
     melting_temp_probe,
     primer_molarity,
     probe_molarity,
+    path_to_amplicon_before_correction,
     path_to_amplicon,
 ):
     """Run TNTBLAST with provided assay details."""
@@ -615,7 +627,7 @@ def run_TNTBLAST(
     primer_molarity = primer_molarity / 1000000
     probe_molarity = probe_molarity / 1000000
     terminal_command = (
-        f"tntblast -i {path_to_tntblast_assay} -d {path_to_genomes} -o {path_to_amplicon}"
+        f"tntblast -i {path_to_tntblast_assay} -d {path_to_genomes} -o {path_to_amplicon_before_correction}"
         f" -e {melting_temp_primer} -E {melting_temp_probe} -t {primer_molarity:.2e} -T {probe_molarity:.2e}"
         f" --best-match -m 1 -v F --single-primer-pcr F"
     )
@@ -636,6 +648,13 @@ def run_TNTBLAST(
     # os.remove(path_to_tntblast_assay)
     print()
     # return path_to_tntblast_txt_output
+    with open(path_to_amplicon,"w") as f:
+        for amplicon_record in SeqIO.parse(path_to_amplicon_before_correction, "fasta"):
+            if "N".lower() not in str(amplicon_record.seq).lower():
+                SeqIO.write(amplicon_record, f, "fasta-2line")
+    f.close()
+    return path_to_amplicon
+
 
 
 def run_makeblastdb(path_to_genomes, assay_name):
@@ -717,39 +736,131 @@ def run_blastn(
 
 
 # def parse_blastn_output(assay_details, path_to_blastn_xml, outdir, prefix):
-def parse_blastn_output(path_to_blastn_xml, path_to_amplicon, qcov):
+def parse_blastn_output(path_to_blastn_xml, path_to_amplicon_before_correction, path_to_amplicon, qcov, ref_seq_file_path):
 
     # https://uoftcoders.github.io/studyGroup/lessons/python/biopython/lesson/
     # path_to_amplicon = os.path.join(
     #     outdir, prefix + "_" + assay_name + "_blastn_amplicon.fasta"
     # )
-    f = open(path_to_amplicon, "w", encoding="utf-8")
+    f = open(path_to_amplicon_before_correction, "w", encoding="utf-8")
 
     result_handle = open(path_to_blastn_xml, "r")
     blast_records = NCBIXML.parse(result_handle)
 
     # get rid of the duplicate ids when there are multiple input templates
     seen = []
+    amplicon_coordinates = {}
 
     for blast_record in blast_records:
         qlen = blast_record.query_letters
-
+        
         for alignment in blast_record.alignments:
-
+           
             for hsp in alignment.hsps:
                 if hsp.align_length / qlen >= qcov:
                     # print("****Alignment****")
                     hit_def = alignment.hit_def
-                    target_id = hit_def.split(" ", 1)[0]
-                    id = (
-                        f"{target_id}_{hsp.sbjct_start}_{hsp.sbjct_end}_{hsp.strand[1]}"
-                    )
+                    id = hit_def.split(" ", 1)[0]
+                    
+                    #testid = f"{id} {hsp.sbjct_start}_{hsp.sbjct_end}_{hsp.strand[1]} qlen={qlen} qstart={hsp.query_start} qend={hsp.query_end}"
+                    
+                    #print(hsp.strand[1])
+
+                    if hsp.strand[1]:
+                        coord = {
+                            "sbjct_start":hsp.sbjct_start, 
+                            "sbjct_end":hsp.sbjct_end,
+                            "query_start": hsp.query_start,
+                            "query_end": hsp.query_end,
+                            "query_len": qlen,
+                            "strand": hsp.strand[1],
+                            "end2end": True if qlen == hsp.query_end else False
+                            }
+                    else:
+                        coord = {
+                        "sbjct_start":hsp.sbjct_end, 
+                        "sbjct_end":hsp.sbjct_start,
+                        "query_start": hsp.query_start,
+                        "query_end": hsp.query_end,
+                        "query_len": qlen,
+                        "strand": hsp.strand[1],
+                        "end2end": True if qlen == hsp.query_start else False
+                        }
+
                     if id not in seen:
+                        amplicon_coordinates[id] = coord
                         seen.append(id)
-                        f.write(f">{id}\n{hsp.sbjct}\n")
+                        #f.write(f">{id}\n{hsp.sbjct}\n")
+                        f.write(f">{hit_def}\n{hsp.sbjct}\n")
     f.close()
+
+    refine_amplicon(ref_seq_file_path, path_to_amplicon_before_correction, path_to_amplicon, amplicon_coordinates)
+    #return path_to_amplicon, amplicon_coordinates
     return path_to_amplicon
 
+def refine_amplicon(path_to_genomes, path_to_amplicon_before_correction, path_to_amplicon, amplicon_coordinates):
+
+    SeqDict = SeqIO.to_dict(SeqIO.parse(path_to_genomes, "fasta"))
+    print(path_to_amplicon)
+    with open(path_to_amplicon,"w") as f:
+        for amplicon_record in SeqIO.parse(path_to_amplicon_before_correction, "fasta"):
+                #f.write(str(amplicon_record.id) + "\n")
+                # f.write(str(amplicon_record.seq[:10]) + "\n")  #first 10 base positions
+                # f.write(str(amplicon_record.seq[-10:]) + "\n") #last 10 base positions
+                id = amplicon_record.id
+                ref_record = SeqDict[id]
+                s_start = amplicon_coordinates[id]["sbjct_start"]
+                s_end = amplicon_coordinates[id]["sbjct_end"]
+                query_start = amplicon_coordinates[id]["query_start"]
+                query_end = amplicon_coordinates[id]["query_end"]
+                
+                qlen = amplicon_coordinates[id]["query_len"]
+                s_strand = amplicon_coordinates[id]["strand"]
+                t_start = s_start
+                t_end = s_end
+                #print(f"id={id}, start={s_start}, end={s_end}, strand={s_strand}")
+                if amplicon_coordinates[amplicon_record.id]["end2end"]:
+                        if "N".lower() not in str(amplicon_record.seq).lower(): 
+                            SeqIO.write(amplicon_record, f, "fasta-2line")
+                            
+                        
+                        #debug purpose
+                        """ if s_strand == "Minus":
+                            print(f"id={id}, start={s_start}, end={s_end}, strand={s_strand}")
+                            print(f"id={id}, qstart={query_start}, qend={query_end}, strand={s_strand}")
+                            cut_record = ref_record[t_end-1: t_start].reverse_complement(id=f"{ref_record.id}_{t_start}_{t_end}_{s_strand}",  description="")
+                            SeqIO.write(cut_record, f, "fasta-2line") """
+                    
+                else:
+                    if s_strand == "Plus":
+                        if query_start > 1:
+                            t_start = t_start - query_start
+                        if query_end < qlen:
+                            t_end = t_end + qlen - query_end
+                        # blast coordinate with 1 but python index starting with 0
+                        cut_record = ref_record[t_start-1: t_end]
+                        cut_record.id = ref_record.id
+                        cut_record.name = ""
+                        cut_record.description = ref_record.description
+
+                        if "N".lower() not in str(cut_record.seq).lower(): 
+                            SeqIO.write(cut_record, f, "fasta-2line")
+                       
+                    else:
+                        #print("minus.........................")
+                        if query_start > 1:
+                            # blast coordinate with 1 but python index starting with 0
+                            t_start = t_start + query_start
+                        if query_end < qlen:
+                            t_end = t_end - qlen + query_end
+                        
+                        #cut_record = ref_record[t_end-1: t_start].reverse_complement()
+                        #cut_record = ref_record[t_end-1: t_start].reverse_complement(id=f"{ref_record.id}_{t_start}_{t_end}_{s_strand}",  description="")
+                        cut_record = ref_record[t_end-1: t_start].reverse_complement(id=f"{ref_record.id}_rc", name=True, description=True)
+                        if "N".lower() not in str(amplicon_record.seq).lower(): 
+                            SeqIO.write(cut_record, f, "fasta-2line")
+
+    f.close()                   
 
 def count_targets(path_to_genomes):
     """Counts the number of target sequences in the provided genomes FASTA file.
@@ -882,7 +993,7 @@ def parse_msa_output(
             rev_primer_site_list = []
             target_list = []
             for record in align[:, rev_start : len(rev_primer_alignment)]:
-                # for record in align[:, rev_start:rev_end]:
+                # for record amplicon_recordalign[:, rev_start:rev_end]:
                 # print(str(fwd_record.seq))
                 if "n" in str(record.seq):
                     continue
@@ -1601,6 +1712,7 @@ def main():
     try:
         args.func(args)
     except AttributeError:
+
         parser.print_help()
         parser.exit()
 

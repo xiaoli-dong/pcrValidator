@@ -27,7 +27,7 @@ for blast_record in blast_records:
                 hit_def = alignment.hit_def
 
                 target_id = hit_def.split(" ", 1)[0]
-                id = f"{target_id}_{hsp.sbjct_start}_{hsp.sbjct_end}_{hsp.strand[1]}"
+                id = f"{target_id}_{hsp.sbjct_start}_{hsp.sbjct_end}_{hsp.strand[1]} qlen={qlen} qstart={hsp.query_start} qend={hsp.query_end}"
 
                 # print("sequence:", alignment.title)
                 # print("id:", alignment.hit_id)
