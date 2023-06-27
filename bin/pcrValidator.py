@@ -84,7 +84,7 @@ def get_parser():
         "--prefix",
         "-p",
         type=str,
-        default="output",
+        default="",
         help="output file name prefix",
     )
     tntblast_optional_group.add_argument(
@@ -96,25 +96,25 @@ def get_parser():
     tntblast_optional_group.add_argument(
         "-e",
         type=int,
-        default=45,
+        default=60,
         help="minimum primer Tm (degrees C)",
     )
     tntblast_optional_group.add_argument(
         "-E",
         type=int,
-        default=45,
+        default=60,
         help="minimum probe Tm (degrees C)",
     )
     tntblast_optional_group.add_argument(
         "-t",
         type=float,
-        default=0.90,
+        default=0.80,
         help="primer strand concentration (in uM)",
     )
     tntblast_optional_group.add_argument(
         "-T",
         type=float,
-        default=0.25,
+        default=0.20,
         help="Probe strand concentration (in uM)",
     )
     tntblast_optional_group.add_argument(
@@ -130,10 +130,10 @@ def get_parser():
         help="Turn on iupac option to enable iupac degeneration during the sequence mask ",
     )
     tntblast_optional_group.add_argument(
-        "--exclude_ns",
+        "--exclude_ns_from_amplicon",
         default=False,
         action="store_true",
-        help="Turn on this option will exclude the amplicons contain Ns",
+        help="Turn on this option will exclude the amplicons containing Ns",
     )
     tntblast_parser.set_defaults(func=run_tntblast_analysis)
 
@@ -167,7 +167,7 @@ def get_parser():
     blastn_optional_group.add_argument(
         "--prefix",
         type=str,
-        default="output",
+        default="",
         help="output file name prefix",
     )
 
@@ -191,11 +191,18 @@ def get_parser():
         help="blastn search expectation value (E) threshold for saving hits",
     )
     blastn_optional_group.add_argument(
-        "--qcov",
+        "--perc_identity",
         type=float,
-        default=0.9,
-        help="blastn search template query coverage, min > 0, max = 1",
+        default=80,
+        help="blastn search Percent identity between 0..100",
     )
+    blastn_optional_group.add_argument(
+        "--qcov_hsp_perc",
+        type=float,
+        default=95,
+        help="blastn search Percent query coverage per hsp between 0..100",
+    )
+    
     blastn_optional_group.add_argument(
         "--max_target_seqs",
         "-m",
@@ -211,11 +218,12 @@ def get_parser():
         help="Turn on best hit per subject sequence for blastn search",
     )
     blastn_optional_group.add_argument(
-        "--exclude_ns",
+        "--exclude_ns_from_amplicon",
         default=False,
         action="store_true",
-        help="Turn on this option will exclude the amplicons contain Ns",
+        help="Turn on this option will exclude the amplicons containing Ns",
     )
+    
 
     blastn_optional_group.add_argument(
         "--mask_output",
@@ -235,48 +243,70 @@ def get_parser():
 
 
 def set_pathes(outdir, prefix, assay_name, search_tool_name):
-    path_to_assay_seq = os.path.join(
-        outdir, prefix + "_" + assay_name + "_msa_assay.fasta"
-    )
-    path_to_amplicon_before_correction = os.path.join(
-        outdir,
-        prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon.no_correction.fasta",
-    )
-    path_to_amplicon = os.path.join(
-        outdir,
-        prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon.fasta",
-    )
-    path_to_amplicon_exclude = os.path.join(
-        outdir,
-        prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon.exclude.fasta",
-    )
-    
-    path_to_mafft_output = os.path.join(
-        outdir,
-        prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon_mafft.fasta",
-    )
 
-    path_to_pcr_report = os.path.join(
-        outdir,
-        prefix + "_" + assay_name + "_" + search_tool_name + "_pcr.tsv",
-    )
+    if prefix:
+        path_to_assay_seq = os.path.join(
+            outdir + "/tmp", prefix + "_" + assay_name + "_msa_assay.fasta"
+        )
+        path_to_amplicon_before_correction = os.path.join(
+            outdir + "/tmp", 
+            prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon.no_correction.fasta",
+        )
+        path_to_amplicon = os.path.join(
+            outdir,
+            prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon.fasta",
+        )
+        path_to_amplicon_exclude = os.path.join(
+            outdir + "/tmp", 
+            prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon.exclude.fasta",
+        )
+        
+        path_to_mafft_output = os.path.join(
+            outdir,
+            prefix + "_" + assay_name + "_" + search_tool_name + "_amplicon_mafft.fasta",
+        )
 
-    path_to_assay_report = os.path.join(
-        outdir,
-        prefix + "_" + assay_name + "_" + search_tool_name + "_assay_report.tsv",
-    )
-    path_to_fwd_variant_report = os.path.join(
-        outdir,
-        prefix + "_" + assay_name + "_" + search_tool_name + "_fwd_variants.tsv",
-    )
-    path_to_rev_variant_report = os.path.join(
-        outdir,
-        prefix + "_" + assay_name + "_" + search_tool_name + "_rev_variants.tsv",
-    )
-    path_to_probe_variant_report = os.path.join(
-        outdir,
-        prefix + "_" + assay_name + "_" + search_tool_name + "_probe_variants.tsv",
-    )
+        path_to_pcr_report = os.path.join(
+            outdir,
+            prefix + "_" + assay_name + "_" + search_tool_name + "_pcr.tsv",
+        )
+
+        path_to_assay_report = os.path.join(
+            outdir,
+            prefix + "_" + assay_name + "_" + search_tool_name + "_assay_report.tsv",
+        )        
+    else:
+        path_to_assay_seq = os.path.join(
+            outdir + "/tmp", assay_name + "_msa_assay.fasta"
+        )
+        path_to_amplicon_before_correction = os.path.join(
+            outdir + "/tmp", 
+           assay_name + "_" + search_tool_name + "_amplicon.no_correction.fasta",
+        )
+        path_to_amplicon = os.path.join(
+            outdir,
+           assay_name + "_" + search_tool_name + "_amplicon.fasta",
+        )
+        path_to_amplicon_exclude = os.path.join(
+            outdir + "/tmp", 
+           assay_name + "_" + search_tool_name + "_amplicon.exclude.fasta",
+        )
+        
+        path_to_mafft_output = os.path.join(
+            outdir,
+           assay_name + "_" + search_tool_name + "_amplicon_mafft.fasta",
+        )
+
+        path_to_pcr_report = os.path.join(
+            outdir,
+           assay_name + "_" + search_tool_name + "_pcr.tsv",
+        )
+
+        path_to_assay_report = os.path.join(
+            outdir,
+           assay_name + "_" + search_tool_name + "_assay_report.tsv",
+        )
+        
     return (
         path_to_assay_seq,
         path_to_amplicon_before_correction,
@@ -285,9 +315,7 @@ def set_pathes(outdir, prefix, assay_name, search_tool_name):
         path_to_mafft_output,
         path_to_pcr_report,
         path_to_assay_report,
-        path_to_fwd_variant_report,
-        path_to_rev_variant_report,
-        path_to_probe_variant_report,
+        
     )
 
 
@@ -320,7 +348,7 @@ def run_blastn_analysis(args):
 
         ref_seq_file_path = assay_details[1]
         assay_outdir = os.path.join(args.outdir, assay_name)
-        Path(assay_outdir).mkdir(parents=True, exist_ok=True)
+        Path(assay_outdir + "/tmp").mkdir(parents=True, exist_ok=True)
         (
             path_to_assay_seq,
             path_to_amplicon_before_correction,
@@ -329,9 +357,7 @@ def run_blastn_analysis(args):
             path_to_mafft_output,
             path_to_pcr_report,
             path_to_assay_report,
-            path_to_fwd_variant_report,
-            path_to_rev_variant_report,
-            path_to_probe_variant_report,
+            
         ) = set_pathes(assay_outdir, args.prefix, assay_name, search_tool_name)
 
         # # the orientiation of the sequences is on the plus strand
@@ -357,10 +383,12 @@ def run_blastn_analysis(args):
             args.max_target_seqs,
             args.word_size,
             args.evalue,
-            args.subject_besthit
+            args.subject_besthit,
+            args.perc_identity,
+            args.qcov_hsp_perc
         )
         #path_to_amplicon,amplicon_coordinates  = parse_blastn_output(path_to_blastn_xml_output, path_to_amplicon, args.qcov)
-        path_to_amplicon = parse_blastn_output(path_to_blastn_xml_output, args.exclude_ns, path_to_amplicon_before_correction, path_to_amplicon, path_to_amplicon_exclude, args.qcov, ref_seq_file_path)
+        path_to_amplicon = parse_blastn_output(path_to_blastn_xml_output, args.exclude_ns_from_amplicon, path_to_amplicon_before_correction, path_to_amplicon, path_to_amplicon_exclude, ref_seq_file_path)
         
         #refine_amplicon(ref_seq_file_path, path_to_amplicon, amplicon_coordinates)
         #print(amplicon_coordinates)
@@ -388,17 +416,7 @@ def run_blastn_analysis(args):
             path_to_assay_report,
             my_tech_dict,
         )
-        write_variants_report(
-            assay_details,
-            msa_results,
-            args.minAbundant,
-            args.mask_output,
-            args.enable_iupac,
-            path_to_fwd_variant_report,
-            path_to_rev_variant_report,
-            path_to_probe_variant_report,
-            my_tech_dict,
-        )
+        
 
 
 def run_tntblast_analysis(args):
@@ -434,7 +452,8 @@ def run_tntblast_analysis(args):
         probe_seq = assay_details[7]
         ref_seq_file_path = assay_details[1]
         assay_outdir = os.path.join(args.outdir, assay_name)
-        Path(assay_outdir).mkdir(parents=True, exist_ok=True)
+        Path(assay_outdir + "/tmp").mkdir(parents=True, exist_ok=True)
+        #Path(assay_outdir).mkdir(parents=True, exist_ok=True)
         (
             path_to_assay_seq,
             path_to_amplicon_before_correction,
@@ -443,9 +462,6 @@ def run_tntblast_analysis(args):
             path_to_mafft_output,
             path_to_pcr_report,
             path_to_assay_report,
-            path_to_fwd_variant_report,
-            path_to_rev_variant_report,
-            path_to_probe_variant_report,
         ) = set_pathes(assay_outdir, args.prefix, assay_name, search_tool_name)
 
         f = open(path_to_assay_seq, "w", encoding="utf-8")
@@ -458,7 +474,7 @@ def run_tntblast_analysis(args):
         f.close()
 
         run_TNTBLAST(
-            args.exclude_ns,
+            args.exclude_ns_from_amplicon,
             assay_details,
             ref_seq_file_path,
             assay_outdir,
@@ -495,18 +511,7 @@ def run_tntblast_analysis(args):
             path_to_assay_report,
             my_tech_dict,
         )
-        write_variants_report(
-            assay_details,
-            msa_results,
-            args.minAbundant,
-            args.mask_output,
-            args.enable_iupac,
-            path_to_fwd_variant_report,
-            path_to_rev_variant_report,
-            path_to_probe_variant_report,
-            my_tech_dict,
-        )
-
+        
 
 def check_genomes_file(path_to_file, assay_name):
     """Checks that file exists, is not empty, and headers are unique and hashable."""
@@ -618,7 +623,7 @@ def read_assay_file(path_to_file):
 
 
 def run_TNTBLAST(
-    exclude_ns,
+    exclude_ns_from_amplicon,
     assay_details,
     path_to_genomes,
     outdir,
@@ -644,7 +649,7 @@ def run_TNTBLAST(
     assay = [assay_name, fwd_primer_seq, rev_primer_seq]
     assay += [probe_seq] if probe_seq != "" else []
     assay = "\t".join(assay)
-    path_to_tntblast_assay = os.path.join(outdir, assay_name + "_tntblast_assay.tsv")
+    path_to_tntblast_assay = os.path.join(outdir + "/tmp", assay_name + "_tntblast_assay.tsv")
     with open(path_to_tntblast_assay, "w", encoding="utf-8") as output_file:
         output_file.write(assay + "\n")
     # Create terminal command for TNTBLAST and run
@@ -675,7 +680,7 @@ def run_TNTBLAST(
     with open(path_to_amplicon,"w") as f, open(path_to_amplicon_exclude, "w") as f0:
 
         for amplicon_record in SeqIO.parse(path_to_amplicon_before_correction, "fasta"):
-            if exclude_ns:
+            if exclude_ns_from_amplicon:
                 if "N".lower() not in str(amplicon_record.seq).lower():
                     SeqIO.write(amplicon_record, f, "fasta-2line")
                 else:
@@ -731,6 +736,8 @@ def run_blastn(
     word_size,
     evalue,
     subject_besthit,
+    perc_identity,
+    qcov_hsp_perc
 ):
 
     """make blastn search database"""
@@ -739,13 +746,13 @@ def run_blastn(
     # genome_name = os.path.basename(path_to_genomes)
     assay_name = assay_details[0]
     path_to_blastn_xml_output = os.path.join(
-        outdir, assay_name, prefix + "_" + assay_name + "_blastn.xml"
+        outdir + "/" + assay_name + "/tmp", prefix + "_" + assay_name + "_blastn.xml"
     )
     # path_to_blastdb = f"tmp/{genome_name}"
     if subject_besthit:
-        terminal_command = f"blastn -query {path_to_query} -db {path_to_blastdb} -word_size {word_size} -out {path_to_blastn_xml_output}  -outfmt 5  -max_target_seqs {max_target_seqs}  -dust no -task blastn -evalue {evalue} -subject_besthit"
+        terminal_command = f"blastn -query {path_to_query} -db {path_to_blastdb} -word_size {word_size} -out {path_to_blastn_xml_output}  -outfmt 5  -max_target_seqs {max_target_seqs}  -dust no -task blastn -evalue {evalue} -perc_identity {perc_identity} -qcov_hsp_perc {qcov_hsp_perc} -subject_besthit"
     else:
-        terminal_command = f"blastn -query {path_to_query} -db {path_to_blastdb} -word_size {word_size} -out {path_to_blastn_xml_output}  -outfmt 5  -max_target_seqs {max_target_seqs}  -dust no -task blastn -evalue {evalue}"
+        terminal_command = f"blastn -query {path_to_query} -db {path_to_blastdb} -word_size {word_size} -out {path_to_blastn_xml_output}  -outfmt 5  -max_target_seqs {max_target_seqs}  -dust no -task blastn -evalue {evalue} -perc_identity {perc_identity} -qcov_hsp_perc {qcov_hsp_perc}"
     print(terminal_command)
 
     completed_process = subprocess.run(
@@ -768,7 +775,7 @@ def run_blastn(
 
 
 # def parse_blastn_output(assay_details, path_to_blastn_xml, outdir, prefix):
-def parse_blastn_output(path_to_blastn_xml, exclude_ns, path_to_amplicon_before_correction, path_to_amplicon, path_to_amplicon_exclude, qcov, ref_seq_file_path):
+def parse_blastn_output(path_to_blastn_xml, exclude_ns_from_amplicon, path_to_amplicon_before_correction, path_to_amplicon, path_to_amplicon_exclude, ref_seq_file_path):
 
     # https://uoftcoders.github.io/studyGroup/lessons/python/biopython/lesson/
     # path_to_amplicon = os.path.join(
@@ -789,44 +796,44 @@ def parse_blastn_output(path_to_blastn_xml, exclude_ns, path_to_amplicon_before_
         for alignment in blast_record.alignments:
            
             for hsp in alignment.hsps:
-                if hsp.align_length / qlen >= qcov:
-                    # print("****Alignment****")
-                    hit_def = alignment.hit_def
-                    id = hit_def.split(" ", 1)[0]
-                    
-                    if hsp.strand[1]:
-                        coord = {
-                            "sbjct_start":hsp.sbjct_start, 
-                            "sbjct_end":hsp.sbjct_end,
-                            "query_start": hsp.query_start,
-                            "query_end": hsp.query_end,
-                            "query_len": qlen,
-                            "strand": hsp.strand[1],
-                            "end2end": True if qlen == hsp.query_end else False
-                            }
-                    else:
-                        coord = {
-                        "sbjct_start":hsp.sbjct_end, 
-                        "sbjct_end":hsp.sbjct_start,
+                #if hsp.align_length / qlen >= qcov:
+                # print("****Alignment****")
+                hit_def = alignment.hit_def
+                id = hit_def.split(" ", 1)[0]
+                
+                if hsp.strand[1]:
+                    coord = {
+                        "sbjct_start":hsp.sbjct_start, 
+                        "sbjct_end":hsp.sbjct_end,
                         "query_start": hsp.query_start,
                         "query_end": hsp.query_end,
                         "query_len": qlen,
                         "strand": hsp.strand[1],
-                        "end2end": True if qlen == hsp.query_start else False
+                        "end2end": True if qlen == hsp.query_end else False
                         }
+                else:
+                    coord = {
+                    "sbjct_start":hsp.sbjct_end, 
+                    "sbjct_end":hsp.sbjct_start,
+                    "query_start": hsp.query_start,
+                    "query_end": hsp.query_end,
+                    "query_len": qlen,
+                    "strand": hsp.strand[1],
+                    "end2end": True if qlen == hsp.query_start else False
+                    }
 
-                    if id not in seen:
-                        amplicon_coordinates[id] = coord
-                        seen.append(id)
-                        #f.write(f">{id}\n{hsp.sbjct}\n")
-                        f.write(f">{hit_def}\n{hsp.sbjct}\n")
+                if id not in seen:
+                    amplicon_coordinates[id] = coord
+                    seen.append(id)
+                    #f.write(f">{id}\n{hsp.sbjct}\n")
+                    f.write(f">{hit_def}\n{hsp.sbjct}\n")
     f.close()
 
-    refine_amplicon(exclude_ns, ref_seq_file_path, path_to_amplicon_before_correction, path_to_amplicon, path_to_amplicon_exclude, amplicon_coordinates)
+    refine_amplicon(exclude_ns_from_amplicon, ref_seq_file_path, path_to_amplicon_before_correction, path_to_amplicon, path_to_amplicon_exclude, amplicon_coordinates)
     #return path_to_amplicon, amplicon_coordinates
     return path_to_amplicon
 
-def refine_amplicon(exclude_ns, path_to_genomes, path_to_amplicon_before_correction, path_to_amplicon, path_to_amplicon_exclude, amplicon_coordinates):
+def refine_amplicon(exclude_ns_from_amplicon, path_to_genomes, path_to_amplicon_before_correction, path_to_amplicon, path_to_amplicon_exclude, amplicon_coordinates):
 
     SeqDict = SeqIO.to_dict(SeqIO.parse(path_to_genomes, "fasta"))
     print(path_to_amplicon)
@@ -848,7 +855,7 @@ def refine_amplicon(exclude_ns, path_to_genomes, path_to_amplicon_before_correct
                 t_end = s_end
                 #print(f"id={id}, start={s_start}, end={s_end}, strand={s_strand}")
                 if amplicon_coordinates[amplicon_record.id]["end2end"]:
-                        if exclude_ns:
+                        if exclude_ns_from_amplicon:
                             if "N".lower() not in str(amplicon_record.seq).lower(): 
                                 SeqIO.write(amplicon_record, f, "fasta-2line")
                             else:
@@ -867,7 +874,7 @@ def refine_amplicon(exclude_ns, path_to_genomes, path_to_amplicon_before_correct
                         cut_record.id = ref_record.id
                         cut_record.name = ""
                         cut_record.description = ref_record.description
-                        if exclude_ns:
+                        if exclude_ns_from_amplicon:
                             if "N".lower() not in str(cut_record.seq).lower(): 
                                 SeqIO.write(cut_record, f, "fasta-2line")
                             else:
@@ -886,7 +893,7 @@ def refine_amplicon(exclude_ns, path_to_genomes, path_to_amplicon_before_correct
                         #cut_record = ref_record[t_end-1: t_start].reverse_complement()
                         #cut_record = ref_record[t_end-1: t_start].reverse_complement(id=f"{ref_record.id}_{t_start}_{t_end}_{s_strand}",  description="")
                         cut_record = ref_record[t_end-1: t_start].reverse_complement(id=f"{ref_record.id}_rc", name=True, description=True)
-                        if exclude_ns:
+                        if exclude_ns_from_amplicon:
                             if "N".lower() not in str(amplicon_record.seq).lower(): 
                                 SeqIO.write(cut_record, f, "fasta-2line")
                             else:
@@ -1028,7 +1035,8 @@ def parse_msa_output(
             rev_coord_found = True
             rev_primer_site_list = []
             target_list = []
-            for record in align[:, rev_start : len(rev_primer_alignment)]:
+            #for record in align[:, rev_start : len(rev_primer_alignment)]:
+            for record in align[:, rev_start : rev_end]:
                 # for record amplicon_recordalign[:, rev_start:rev_end]:
                 # print(str(fwd_record.seq))
                 # if "n" in str(record.seq):
@@ -1066,7 +1074,8 @@ def parse_msa_output(
             for record in align[:, probe_start:probe_end]:
                 # print(str(fwd_record.seq))
                 # if "n" in str(record.seq):
-                #     continue
+                #      continue
+                
                 if record.id == probe_name:
                     tech_dict["probe_align"] = str(record.seq)
                     continue
@@ -1100,13 +1109,13 @@ def parse_msa_output(
                 & (msa_results.target != rev_primer_name)
             ]
 
-            msa_results.to_csv(
+            """ msa_results.to_csv(
                 path_to_pcr_report,
                 sep="\t",
                 index=False,
                 # index_label="variant_name",
             )
-
+            """
             # print(msa_results)
             break
         elif (
@@ -1124,12 +1133,12 @@ def parse_msa_output(
                 + msa_results["probe_errors"]
             )
 
-            msa_results.to_csv(
+            """ msa_results.to_csv(
                 path_to_pcr_report,
                 sep="\t",
                 index=False,
                 # index_label="variant_name",
-            )
+            ) """
 
             break
     print(tech_dict)
@@ -1485,253 +1494,6 @@ def write_assay_report(
             # index_label="variant_id",
         )
 
-
-def write_variants_report(
-    assay_details,
-    msa_results,
-    threshold,
-    mask_output,
-    enable_iupac,
-    path_to_fwd_variant_report,
-    path_to_rev_variant_report,
-    path_to_probe_variant_report,
-    my_tech_dict,
-):
-
-    # Count targets detected by each assay
-    targets_detected = msa_results["assay_name"].value_counts()
-    amplicon_count = targets_detected[0]
-
-    amplicon_count = msa_results["amplicon_detected"].iloc[0]
-
-    fwd_summary = (
-        msa_results.groupby(["fwd_site", "fwd_errors"])
-        .size()
-        .reset_index(name="amplicon_detected")
-    )
-
-    fwd_summary["total_amplicon"] = amplicon_count
-
-    fwd_summary["amplicon_detected_pct"] = round(
-        fwd_summary["amplicon_detected"] * 100 / amplicon_count, 2
-    )
-
-    fwd_summary.astype(
-        {
-            "fwd_errors": "int",
-            "amplicon_detected": "int",
-            "total_amplicon": "int",
-            # "total_count_seqdb": "int",
-        }
-    )
-    fwd_summary = fwd_summary[fwd_summary["amplicon_detected_pct"] >= float(threshold)]
-
-    ################################### start mask ####################
-    if mask_output:
-        fwd_list = list(my_tech_dict["fwd_primer_align"])
-        index = 0
-        # print("fwd_list")
-        # print(fwd_list)
-        for seqstr in fwd_summary["fwd_site"]:
-
-            # create a lit using the sequence string
-            seqstr_list = list(seqstr)
-            # print("fwd_list")
-            # print(fwd_list)
-            # print(seqstr_list)
-            seqstr_list_masked = []
-            errors = 0
-            for i, letter in enumerate(seqstr_list):
-                if enable_iupac:
-                    if letter.upper() in iupac_dict[fwd_list[i].upper()]:
-
-                        seqstr_list_masked.append(".")
-                    else:
-                        seqstr_list_masked.append(letter)
-                        errors += 1
-                else:
-                    if letter == fwd_list[i]:
-                        seqstr_list_masked.append(".")
-                    else:
-                        seqstr_list_masked.append(letter)
-
-            # update the seq str with the masked str, dot represent the same as the input tech seq
-            fwd_summary.at[index, "fwd_site"] = "".join(seqstr_list_masked)
-            if enable_iupac:
-                fwd_summary.at[index, "fwd_errors"] = errors
-
-            index += 1
-
-    ################################# end of mask ###########################
-
-    # when iupac enable, after degenerated, some of the different site will become the same
-    final_fwd_summary = fwd_summary.groupby(["fwd_site", "fwd_errors"]).sum()
-
-    final_fwd_summary.sort_values(
-        ["amplicon_detected"], axis=0, ascending=[False], inplace=True
-    )
-    final_fwd_summary = final_fwd_summary.reset_index()
-
-    # print(final_fwd_summary)
-    final_fwd_summary["amplicon_detected_pct"] = round(
-        final_fwd_summary["amplicon_detected_pct"], 2
-    )
-    final_fwd_summary.to_csv(
-        path_to_fwd_variant_report,
-        sep="\t",
-        index=True,
-        # index_label="variant_id",
-    )
-
-    # print(final_fwd_summary)
-
-    rev_summary = (
-        msa_results.groupby(["rev_site", "rev_errors"])
-        .size()
-        .reset_index(name="amplicon_detected")
-    )
-
-    rev_summary["total_amplicon"] = amplicon_count
-
-    rev_summary["amplicon_detected_pct"] = round(
-        rev_summary["amplicon_detected"] * 100 / amplicon_count, 2
-    )
-
-    rev_summary.astype(
-        {
-            "rev_errors": "int",
-            "amplicon_detected": "int",
-            "total_amplicon": "int",
-        }
-    )
-    rev_summary = rev_summary[rev_summary["amplicon_detected_pct"] >= float(threshold)]
-
-    ################################### start mask ####################
-    if mask_output:
-        rev_list = list(my_tech_dict["rev_primer_align"])
-        index = 0
-        for seqstr in rev_summary["rev_site"]:
-
-            # create a lit using the sequence string
-            seqstr_list = list(seqstr)
-            seqstr_list_masked = []
-            errors = 0
-            for i, letter in enumerate(seqstr_list):
-
-                if enable_iupac:
-                    if letter.upper() in iupac_dict[rev_list[i].upper()]:
-                        seqstr_list_masked.append(".")
-                    else:
-                        seqstr_list_masked.append(letter)
-                        errors += 1
-                else:
-                    if letter == rev_list[i]:
-                        seqstr_list_masked.append(".")
-                    else:
-                        seqstr_list_masked.append(letter)
-
-            # update the seq str with the masked str, dot represent the same as the input tech seq
-            rev_summary.at[index, "rev_site"] = "".join(seqstr_list_masked)
-            if enable_iupac:
-                rev_summary.at[index, "rev_errors"] = errors
-            index += 1
-
-    ################################# end of mask ###########################
-
-    # when iupac enable, after degenerated, some of the different site will become the same
-    final_rev_summary = rev_summary.groupby(["rev_site", "rev_errors"]).sum()
-
-    final_rev_summary.sort_values(
-        ["amplicon_detected"], axis=0, ascending=[False], inplace=True
-    )
-    final_rev_summary = final_rev_summary.reset_index()
-
-    # print(final_fwd_summary)
-    final_rev_summary["amplicon_detected_pct"] = round(
-        final_rev_summary["amplicon_detected_pct"], 2
-    )
-    final_rev_summary.to_csv(
-        path_to_rev_variant_report,
-        sep="\t",
-        index=True,
-        # index_label="variant_id",
-    )
-
-    # print(final_rev_summary)
-
-    if assay_details[6] != "":
-        probe_summary = (
-            msa_results.groupby(["probe_site", "probe_errors"])
-            .size()
-            .reset_index(name="amplicon_detected")
-        )
-
-        probe_summary["total_amplicon"] = amplicon_count
-
-        probe_summary["amplicon_detected_pct"] = round(
-            probe_summary["amplicon_detected"] * 100 / amplicon_count, 2
-        )
-        probe_summary.astype(
-            {
-                "probe_errors": "int",
-                "amplicon_detected": "int",
-                "total_amplicon": "int",
-                # "total_count_seqdb": "int",
-            }
-        )
-        probe_summary = probe_summary[
-            probe_summary["amplicon_detected_pct"] >= float(threshold)
-        ]
-
-        ################################### start mask ####################
-        if mask_output:
-            probe_list = list(my_tech_dict["probe_align"])
-            index = 0
-            errors = 0
-            for seqstr in probe_summary["probe_site"]:
-
-                # create a lit using the sequence string
-                seqstr_list = list(seqstr)
-                seqstr_list_masked = []
-                for i, letter in enumerate(seqstr_list):
-                    if enable_iupac:
-                        if letter.upper() in iupac_dict[probe_list[i].upper()]:
-                            seqstr_list_masked.append(".")
-                        else:
-                            seqstr_list_masked.append(letter)
-                            errors += 1
-                    else:
-                        if letter == probe_list[i]:
-                            seqstr_list_masked.append(".")
-                        else:
-                            seqstr_list_masked.append(letter)
-                # update the seq str with the masked str, dot represent the same as the input tech seq
-                probe_summary.at[index, "probe_site"] = "".join(seqstr_list_masked)
-                if enable_iupac:
-                    probe_summary.at[index, "probe_errors"] = errors
-                index += 1
-        ################################# end of mask ###########################
-        # when iupac enable, after degenerated, some of the different site will become the same
-        final_probe_summary = probe_summary.groupby(
-            ["probe_site", "probe_errors"]
-        ).sum()
-
-        final_probe_summary.sort_values(
-            ["amplicon_detected"], axis=0, ascending=[False], inplace=True
-        )
-        final_probe_summary = final_probe_summary.reset_index()
-
-        # print(final_fwd_summary)
-        final_probe_summary["amplicon_detected_pct"] = round(
-            final_probe_summary["amplicon_detected_pct"], 2
-        )
-        final_probe_summary.to_csv(
-            path_to_probe_variant_report,
-            sep="\t",
-            index=True,
-            # index_label="variant_id",
-        )
-        # print(probe_summary)
 
 
 def main():

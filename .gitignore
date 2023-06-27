@@ -1,6 +1,5 @@
 __pycache__
 .venv
 test
-verify
-zika_test_results
 tmp
+cmp
