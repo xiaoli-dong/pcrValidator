@@ -96,26 +96,26 @@ def get_parser():
     tntblast_optional_group.add_argument(
         "-e",
         type=int,
-        default=60,
-        help="minimum primer Tm (degrees C)",
+        default=50,
+        help="The minimum allowed temperature (in °C) for a primer oligo to bind to a target sequence",
     )
     tntblast_optional_group.add_argument(
         "-E",
         type=int,
-        default=60,
-        help="minimum probe Tm (degrees C)",
+        default=50,
+        help="The minimum allowed temperature (in °C) for a probe oligo to bind to a target sequence",
     )
     tntblast_optional_group.add_argument(
         "-t",
         type=float,
-        default=0.80,
-        help="primer strand concentration (in uM)",
+        default=0.90,
+        help="The Molar concentration of primer oligos, used to compute double stranded DNA melting temperatures",
     )
     tntblast_optional_group.add_argument(
         "-T",
         type=float,
         default=0.20,
-        help="Probe strand concentration (in uM)",
+        help="The Molar concentration of probe oligos, used to compute double stranded DNA melting temperatures",
     )
     tntblast_optional_group.add_argument(
         "--mask_output",
