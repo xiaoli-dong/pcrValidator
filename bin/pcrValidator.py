@@ -25,6 +25,7 @@ pd.set_option("display.float_format", "{:.2f}".format)
 iupac_letters = "RYWSMKHBVDN"
 
 iupac_dict = {
+    "-": ["-"],
     "A": ["A"],
     "G": ["G"],
     "C": ["C"],
